@@ -30,6 +30,8 @@
   .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
   .btn-secondary { background: white; color: #1a1a1a; border: 1px solid #ddd; margin-top: 8px; }
   .btn-secondary:hover { background: #f5f5f0; }
+  .btn-danger { background: white; color: #c0392b; border: 1px solid #fcc; margin-top: 8px; }
+  .btn-danger:hover { background: #fff0ee; }
   .loading { display: none; text-align: center; padding: 2rem; color: #888; font-size: 14px; }
   .spinner { width: 24px; height: 24px; border: 2px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -55,7 +57,37 @@
   .pos-item:last-child { border-bottom: none; }
   .check { color: #1a9e75; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
   .drill-box { background: #f0f8f4; border-radius: 8px; padding: 14px 16px; font-size: 14px; color: #333; line-height: 1.6; }
-  @media (max-width: 480px) { .score-grid { grid-template-columns: repeat(2, 1fr); } .container { padding: 1rem; } }
+
+  /* Feedback section */
+  .feedback-card { background: white; border-radius: 12px; border: 2px solid #e8e8e4; padding: 1.5rem; margin-bottom: 1rem; margin-top: 0.5rem; }
+  .feedback-card .label { color: #c07810; }
+  .feedback-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .feedback-header .icon { font-size: 20px; }
+  .feedback-header h3 { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  .feedback-header p { font-size: 13px; color: #888; margin-top: 2px; }
+  .feedback-textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 12px; font-size: 14px; font-family: inherit; color: #1a1a1a; resize: vertical; min-height: 100px; background: #fafaf8; transition: border-color 0.15s; outline: none; }
+  .feedback-textarea:focus { border-color: #888; background: white; }
+  .feedback-textarea::placeholder { color: #bbb; }
+  .feedback-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .feedback-actions .btn { width: auto; padding: 10px 20px; font-size: 14px; }
+  .btn-save-feedback { background: #1a1a1a; color: white; border: none; border-radius: 8px; cursor: pointer; }
+  .btn-save-feedback:hover { background: #333; }
+  .btn-skip-feedback { background: white; color: #888; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; }
+  .btn-skip-feedback:hover { background: #f5f5f0; }
+  .feedback-saved { display: none; background: #f0f8f4; border: 1px solid #b2e0cc; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #1a7a55; margin-top: 10px; }
+
+  /* Saved examples manager */
+  .examples-count { display: inline-block; background: #1a1a1a; color: white; border-radius: 99px; font-size: 11px; padding: 2px 8px; margin-left: 8px; font-weight: 600; }
+  .examples-panel { display: none; margin-top: 12px; }
+  .example-item { background: #f8f8f4; border-radius: 8px; padding: 12px; margin-bottom: 8px; font-size: 13px; color: #555; position: relative; line-height: 1.5; }
+  .example-item strong { color: #1a1a1a; display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .example-delete { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+  .example-delete:hover { color: #c0392b; background: #fff0ee; }
+  .no-examples { font-size: 14px; color: #aaa; text-align: center; padding: 1rem 0; }
+  .toggle-examples { background: none; border: none; font-size: 13px; color: #888; cursor: pointer; padding: 0; text-decoration: underline; margin-top: 8px; }
+  .toggle-examples:hover { color: #333; }
+
+  @media (max-width: 480px) { .score-grid { grid-template-columns: repeat(2, 1fr); } .container { padding: 1rem; } .feedback-actions { flex-direction: column; } .feedback-actions .btn { width: 100%; } }
 </style>
 </head>
 <body>
@@ -76,6 +108,22 @@
       <small>MP4, MOV, WebM — max 100MB</small>
     </div>
     <input type="file" id="fileInput" accept="video/*">
+  </div>
+
+  <!-- Saved examples manager -->
+  <div class="card" id="examplesCard" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="label" style="margin-bottom:4px;">Träningsexempel</div>
+        <div style="font-size:13px;color:#888;">AI:n lär sig från dina korrigeringar</div>
+      </div>
+      <span class="examples-count" id="examplesCount">0</span>
+    </div>
+    <button class="toggle-examples" id="toggleExamples" onclick="toggleExamplesPanel()">Visa sparade exempel</button>
+    <div class="examples-panel" id="examplesPanel">
+      <div id="examplesList"></div>
+      <button class="btn btn-danger" style="margin-top:8px;font-size:13px;padding:9px;" onclick="clearAllExamples()">🗑 Rensa alla exempel</button>
+    </div>
   </div>
 
   <div class="preview" id="preview">
@@ -100,6 +148,29 @@
   <div class="loading" id="loading"><div class="spinner"></div><span id="loadingText">Extraherar frames...</span></div>
 
   <div class="result" id="result"></div>
+
+  <!-- Feedback section — shown after analysis -->
+  <div class="feedback-card" id="feedbackCard" style="display:none">
+    <div class="feedback-header">
+      <span class="icon">✏️</span>
+      <div>
+        <h3>Lär upp AI:n</h3>
+        <p>Var analysen fel eller missar den något? Rätta till den här så lär sig AI:n till nästa gång.</p>
+      </div>
+    </div>
+    <textarea
+      class="feedback-textarea"
+      id="feedbackText"
+      placeholder="T.ex: &quot;Rotorsaken är tidig extension, inte viktsförflyttningen. Höfterna skjuts mot bollen vid nedsvinget vilket gör att han reser sig upp ur sin hållning. Det ser man tydligt i frame 5-6.&quot;"
+    ></textarea>
+    <div class="feedback-actions">
+      <button class="btn btn-save-feedback" onclick="saveFeedback()">💾 Spara som träningsexempel</button>
+      <button class="btn btn-skip-feedback" onclick="skipFeedback()">Hoppa över</button>
+    </div>
+    <div class="feedback-saved" id="feedbackSaved">
+      ✅ Sparat! AI:n kommer använda detta nästa gång den analyserar ett swing.
+    </div>
+  </div>
 
 </div>
 
@@ -144,7 +215,83 @@ Fault 9: Getting stuck — hook or blocked push right
 Fault 10: Early extension — hips thrust toward ball, standing up through impact, heel strikes
 Fault 11: Left arm falling to left ribcage in follow-through — hook, right arm dominance`;
 
-const SYSTEM_PROMPT = `You are an expert golf swing coach. You analyze golf swing videos using the following coaching philosophy and framework.
+// ─── FEEDBACK / EXAMPLES STORAGE ───────────────────────────────────────────
+
+function getExamples() {
+  try { return JSON.parse(localStorage.getItem('swing_examples') || '[]'); } catch { return []; }
+}
+
+function saveExample(correction) {
+  const examples = getExamples();
+  examples.push({ correction, timestamp: new Date().toISOString() });
+  // Keep max 20 examples to avoid prompt overflow
+  if (examples.length > 20) examples.shift();
+  localStorage.setItem('swing_examples', JSON.stringify(examples));
+  updateExamplesUI();
+}
+
+function deleteExample(index) {
+  const examples = getExamples();
+  examples.splice(index, 1);
+  localStorage.setItem('swing_examples', JSON.stringify(examples));
+  updateExamplesUI();
+  renderExamplesList();
+}
+
+function clearAllExamples() {
+  if (!confirm('Är du säker? Alla träningsexempel tas bort.')) return;
+  localStorage.removeItem('swing_examples');
+  updateExamplesUI();
+  renderExamplesList();
+}
+
+function updateExamplesUI() {
+  const examples = getExamples();
+  const count = examples.length;
+  document.getElementById('examplesCount').textContent = count;
+  document.getElementById('examplesCard').style.display = count > 0 ? 'block' : 'none';
+}
+
+function toggleExamplesPanel() {
+  const panel = document.getElementById('examplesPanel');
+  const btn = document.getElementById('toggleExamples');
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? 'Visa sparade exempel' : 'Dölj exempel';
+  if (!isOpen) renderExamplesList();
+}
+
+function renderExamplesList() {
+  const examples = getExamples();
+  const list = document.getElementById('examplesList');
+  if (examples.length === 0) {
+    list.innerHTML = '<div class="no-examples">Inga sparade exempel än.</div>';
+    return;
+  }
+  list.innerHTML = examples.map((ex, i) => `
+    <div class="example-item">
+      <strong>Exempel ${i + 1} — ${new Date(ex.timestamp).toLocaleDateString('sv-SE')}</strong>
+      ${escapeHtml(ex.correction)}
+      <button class="example-delete" onclick="deleteExample(${i})" title="Ta bort">×</button>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildFewShotSection() {
+  const examples = getExamples();
+  if (examples.length === 0) return '';
+  const exText = examples.map((ex, i) =>
+    `Correction example ${i + 1}: "${ex.correction}"`
+  ).join('\n');
+  return `\n\nLEARNED CORRECTIONS FROM COACH (apply these patterns to your analysis — these are real corrections the coach has made to previous analyses, showing what was wrong and how to think correctly):\n${exText}\n\nUse these corrections to calibrate your analysis. If you see similar patterns in this swing, apply the same coaching logic.`;
+}
+
+function buildSystemPrompt() {
+  return `You are an expert golf swing coach. You analyze golf swing videos using the following coaching philosophy and framework.
 
 ${COACHING_DOC}
 
@@ -152,6 +299,7 @@ ANALYSIS RULES:
 - Always work through the priority order: setup → weight shift → lower body → upper body → arms → hands/club
 - A problem later in the order almost always has a root cause earlier — find and fix the root cause
 - Be specific and actionable — not generic
+- Look carefully at each frame: note posture at address, weight shift direction, hip/shoulder separation, arm position at top, transition sequence, impact position, follow-through${buildFewShotSection()}
 
 Return ONLY valid JSON, no markdown, no preamble:
 {
@@ -173,6 +321,34 @@ Return ONLY valid JSON, no markdown, no preamble:
   "positives": ["positive in Swedish", "positive in Swedish"],
   "drill": "One specific drill in Swedish to address the root cause"
 }`;
+}
+
+// ─── FEEDBACK UI ────────────────────────────────────────────────────────────
+
+function showFeedbackCard() {
+  const card = document.getElementById('feedbackCard');
+  card.style.display = 'block';
+  document.getElementById('feedbackText').value = '';
+  document.getElementById('feedbackSaved').style.display = 'none';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function saveFeedback() {
+  const text = document.getElementById('feedbackText').value.trim();
+  if (!text) { alert('Skriv in din korrigering först.'); return; }
+  saveExample(text);
+  document.getElementById('feedbackSaved').style.display = 'block';
+  document.getElementById('feedbackText').value = '';
+  setTimeout(() => {
+    document.getElementById('feedbackCard').style.display = 'none';
+  }, 2500);
+}
+
+function skipFeedback() {
+  document.getElementById('feedbackCard').style.display = 'none';
+}
+
+// ─── VIDEO / UI HANDLERS ────────────────────────────────────────────────────
 
 let videoFile = null;
 let selectedFocus = 'full';
@@ -208,6 +384,7 @@ document.getElementById('resetBtn').onclick = () => {
   document.getElementById('optionsCard').style.display = 'none';
   document.getElementById('result').style.display = 'none';
   document.getElementById('result').innerHTML = '';
+  document.getElementById('feedbackCard').style.display = 'none';
   hideError();
 };
 
@@ -217,6 +394,8 @@ function showError(msg) { const e = document.getElementById('errorMsg'); e.textC
 function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
 function setLoading(text) { document.getElementById('loadingText').textContent = text; document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+
+// ─── FRAME EXTRACTION ───────────────────────────────────────────────────────
 
 async function extractFrames(file, n = 8) {
   return new Promise((resolve, reject) => {
@@ -249,6 +428,8 @@ async function extractFrames(file, n = 8) {
   });
 }
 
+// ─── RENDER RESULT ──────────────────────────────────────────────────────────
+
 function scoreClass(s) { return s >= 8 ? 'good' : s >= 6 ? 'ok' : 'bad'; }
 
 function renderResult(data) {
@@ -280,13 +461,19 @@ function renderResult(data) {
   result.innerHTML = html;
   result.style.display = 'block';
   result.scrollIntoView({ behavior: 'smooth' });
+
+  // Show feedback card after result
+  setTimeout(showFeedbackCard, 600);
 }
+
+// ─── ANALYZE ────────────────────────────────────────────────────────────────
 
 async function analyzeSwing() {
   if (!videoFile) return;
   hideError();
   document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('result').style.display = 'none';
+  document.getElementById('feedbackCard').style.display = 'none';
 
   try {
     setLoading('Extraherar frames från video...');
@@ -304,7 +491,7 @@ async function analyzeSwing() {
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: SYSTEM_PROMPT, contents })
+      body: JSON.stringify({ system: buildSystemPrompt(), contents })
     });
 
     if (!response.ok) {
@@ -325,6 +512,9 @@ async function analyzeSwing() {
     document.getElementById('analyzeBtn').disabled = false;
   }
 }
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+updateExamplesUI();
 </script>
 </body>
 </html>
