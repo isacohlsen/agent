@@ -225,7 +225,7 @@ function saveExample(correction) {
   const examples = getExamples();
   examples.push({ correction, timestamp: new Date().toISOString() });
   // Keep max 20 examples to avoid prompt overflow
-  if (examples.length > 50) examples.shift();
+  if (examples.length > 100) examples.shift();
   localStorage.setItem('swing_examples', JSON.stringify(examples));
   updateExamplesUI();
 }
