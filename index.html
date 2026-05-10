@@ -477,7 +477,7 @@ async function analyzeSwing() {
 
   try {
     setLoading('Extraherar frames från video...');
-    const frames = await extractFrames(videoFile, 8);
+    const frames = await extractFrames(videoFile, 12);
 
     setLoading('Skickar till AI-coach...');
     const focusNote = selectedFocus !== 'full' ? ` Fokusera extra på ${selectedFocus}-fasen.` : '';
