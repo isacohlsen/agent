@@ -191,7 +191,7 @@ async function addExample(correction) {
       headers: { ...HEADERS, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ correction })
     });
-    cachedExamples = null; // Clear cache
+    cachedExamples = null;
     await loadExamplesUI();
   } catch (e) { console.error('Kunde inte spara:', e); }
 }
@@ -256,13 +256,13 @@ async function renderExamplesList() {
 async function buildFewShotSection() {
   const examples = cachedExamples || await fetchExamples();
   if (!examples.length) return '';
-  return '\n\nLEARNED CORRECTIONS FROM COACH (real corrections to previous analyses — use to calibrate your thinking):\n'
+  return '\n\nLEARNED CORRECTIONS FROM COACH (real corrections to previous analyses — use these to calibrate your thinking and improve accuracy):\n'
     + examples.map((e, i) => `Correction ${i+1}: "${e.correction}"`).join('\n');
 }
 
 async function buildSystemPrompt() {
   const fewShot = await buildFewShotSection();
-  return `You are an expert golf swing coach. Analyze golf swing videos using this framework:\n\n${COACHING_DOC}\n\nANALYSIS RULES:\n- Work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the order than the visible symptom\n- Be specific and actionable, never generic\n- Study each frame carefully: posture, weight shift, hip/shoulder separation, arm plane, impact position${fewShot}\n\nReturn ONLY valid JSON, no markdown:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10, "label": "Bra/Behöver arbete/Åtgärda först"},\n    "weight_shift": {"score": 1-10, "label": "..."},\n    "lower_body": {"score": 1-10, "label": "..."},\n    "upper_body": {"score": 1-10, "label": "..."},\n    "arms": {"score": 1-10, "label": "..."},\n    "hands": {"score": 1-10, "label": "..."}\n  },\n  "root_cause": "The single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill in Swedish"\n}`;
+  return `You are an expert golf swing coach. Analyze golf swing videos using this coaching philosophy and framework:\n\n${COACHING_DOC}\n\nANALYSIS RULES:\n- Always work through the priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Problems later in the order almost always have a root cause earlier — identify and fix the root cause, not the symptom\n- Be specific and actionable, never generic\n- Use the camera angle clues in the document — DTL reveals knee flex, hip hinge, arm plane, early extension; face-on reveals weight shift, spine tilt, hand position, leg drive\n- Reference specific faults by name when applicable (e.g. Fault 10: Early extension)\n- Give feel cues from the document where relevant${fewShot}\n\nReturn ONLY valid JSON, no markdown, no preamble:\n{\n  "summary": "One sentence overall assessment in Swedish",\n  "scores": {\n    "setup": {"score": 1-10, "label": "Bra/Behöver arbete/Åtgärda först"},\n    "weight_shift": {"score": 1-10, "label": "..."},\n    "lower_body": {"score": 1-10, "label": "..."},\n    "upper_body": {"score": 1-10, "label": "..."},\n    "arms": {"score": 1-10, "label": "..."},\n    "hands": {"score": 1-10, "label": "..."}\n  },\n  "root_cause": "The single most important fix — the root cause in the priority order, in Swedish",\n  "priorities": [\n    {"order": 1, "area": "area name in Swedish", "issue": "specific issue in Swedish", "fix": "concrete actionable fix with feel cue in Swedish"},\n    {"order": 2, "area": "...", "issue": "...", "fix": "..."},\n    {"order": 3, "area": "...", "issue": "...", "fix": "..."}\n  ],\n  "positives": ["positive observation in Swedish", "positive observation in Swedish"],\n  "drill": "One specific drill or feel cue in Swedish to address the root cause"\n}`;
 }
 
 const COACHING_DOC = `Golf Swing Coaching Philosophy & Framework
@@ -270,40 +270,123 @@ const COACHING_DOC = `Golf Swing Coaching Philosophy & Framework
 The Priority Order
 The swing is built from the entire body, where different parts take different priorities in a specific order: setup, weight shift between the feet, lower body, upper body (excluding arms), arms, and lastly the hands and club.
 I always start my assessment from the beginning of this order — checking the setup first, then working through to the club. If there is a problem in the arm movement there will almost always be a problem earlier in the order creating it — most commonly lower body timing. By working this way the fundamentals fall into place faster, and you often solve two problems at once by fixing the root cause that created the secondary problem.
+Parts later in the order have more direct impact on ball flight, while things like weight shift provide more lasting consistency once properly ingrained through practice.
 
 The Swing as a Waltz — Effortless Power
 The swing should flow like a waltz — beginning with the weight shift, followed by the lower body, then continuing through the priority order. When executed correctly the club arrives like a whip, producing effortless power.
-Keep the arms in front of the body throughout the entire swing. They should only move vertically relative to the upper body.
-Straighten the left leg and left arm at impact.
+To optimize consistency, eliminate variables:
+Keep the arms in front of the body throughout the entire swing. They should only move vertically relative to the upper body — lifting in the shoulder joint, bending the right arm and both wrists.
+Straighten the left leg and left arm at impact — a straight leg is always the same length, a bent leg varies. The same principle applies to the arm.
 
 The Backswing
-Start with a 50/50 weight split at address. Shift to 60/40 favoring the right foot during the backswing.
-Just before the top begin shifting weight aggressively back to the left.
-At impact, straighten the left leg from the heel as fast and aggressively as possible.
-At the top: hips rotated minimum 45 degrees, shoulders minimum 90 degrees (ideally 100-110), 1:2 ratio between hip and shoulder rotation.
-Arms in front of the upper body, right arm bent, left arm straight.
+Start with a 50/50 weight split at address.
+Shift to 60/40 favoring the right foot during the backswing.
+Just before the top — while still moving upward — begin shifting weight aggressively back to the left, moving as much weight left as quickly as possible. This is a major power source.
+At impact, straighten the left leg from the heel as fast and aggressively as possible — another major power source.
+Simultaneously rotate the left hip open approximately 45 degrees from the setup angle.
+The right foot rolls to its inside edge during this time, then rises onto the toe after impact.
+At the top of the backswing: hips rotated minimum 45 degrees, shoulders rotated minimum 90 degrees (ideally 100-110), maintain a 1:2 ratio between hip and shoulder rotation. Arms in front of the upper body, right arm bent, left arm straight throughout the entire swing.
+From down the line: hands should be in front of the club. From directly behind: the clubhead should be hidden behind the arms. From face on: the weight shift should be barely visible — only about 1cm visually.
+
+The Downswing
+The downswing is largely a consequence of the backswing:
+Too much weight on the right going back → tends to over-shift left coming down.
+Arms too far inside on takeaway → they go over the top or outside on the way down.
+Club inside at takeaway → outside at the same position on the downswing.
 
 Setup — Down the Line
-Slightly bent knees, weight mid-foot or slightly toward heels, hip pushed back, upper body tilted forward from hips, lower back straight, arms hang straight down, club sits flat.
+Slightly bent knees. Weight centered on the foot, ideally mid-foot but slightly toward the heels. Hip pushed back. Upper body tilted forward from the hips. Lower back straight. Upper back curves toward the ball through scapular protraction. Arms hang straight down from the shoulders. Club sits flat on the ground. Toes, hip joints and shoulder joints each create a line pointing at the target — these three lines should be completely parallel.
 
 Setup — Face On
-Feet just outside shoulder width, left foot ~15 deg open, right foot 5-10 deg open, arms form small Y shape with hands pressed forward toward the target, hip closest to target slightly higher creating small spine tilt away from target.
+Feet placed just outside shoulder width. Left foot approximately 15 degrees open toward the target, right foot approximately 5-10 degrees turned back. Left arm completely straight, right arm nearly straight. Arms and club create a small Y shape — hands pressed forward toward the target. The hip joint closest to the target slightly higher than the back hip, creating a small spine tilt away from the target. Hips pushed slightly toward the target, balanced so total weight remains 50/50 between the feet.
 
-Impact Position
-Hips ~45 degrees open. Weight clearly on left foot. Body forms reverse K shape. Hands visibly ahead of clubhead. Left arm dominant through impact.
+The Grip
+Left hand grips the club at the top of the grip. Club gripped in the fingers of the left hand, not the palm. Right hand placed by first interlocking the right pinky finger with the left index finger. Left thumb lies straight on top of the grip at address. Right hand grips using the front pad of the thumb and the first pad of the index finger.
+
+Arms in Front of the Body
+The arms must remain in front of the chest throughout the entire swing. The most common violation is the right elbow falling onto the side of the ribcage during the backswing. This creates two possible problems: getting stuck or coming over the top. The left arm remains straight from address until the swing is almost completely finished.
+
+Impact Position — Down the Line
+The most important element at impact is that the hips remain back and the player does not stand up through the ball. Right foot: weight on the inside edge only. Left foot: majority of weight on the heel. Hip position: approximately 45 degrees open relative to the setup position.
+
+Impact Position — Face On
+Weight should be clearly on the left foot at impact. The body creates a reverse K shape. The hands must be visibly ahead of the clubhead at impact. The left arm should be the dominant arm through impact — stabilizes the clubhead and keeps hands ahead of the club.
+
+Camera Angle Analysis Guide
+DTL (Down the Line — from player's right side): reveals knee flex and hip hinge at setup, arm plane during swing, whether takeaway is inside or outside, whether arms stay in front of body, left hip rotation at impact, early extension.
+Face On: reveals weight distribution at address, spine tilt, hand position (forward press), weight shift to the right in backswing, passive arms in takeaway, shoulder rotation, weight shift to the left in downswing, left leg straightening at impact, hands ahead of clubhead at impact.
 
 Common Faults
-Fault 1: Too upright posture — causes over the top, inconsistent contact
-Fault 2: No forward press of hands — causes scooping, weak high ball flight
-Fault 3: No weight shift trigger — breaks waltz rhythm, passive lower body
-Fault 4: Takeaway too inside/outside — mirrors in downswing, causes pulls or blocks
-Fault 5: Right elbow falling to ribcage — causes getting stuck or coming over the top
-Fault 6: Across the line or laid off at top — consequence of elbow/takeaway faults
-Fault 7: Insufficient weight transfer to left — fat contact, scooping, weak ball flight
-Fault 8: Coming over the top — outside-in path, slice or pull
-Fault 9: Getting stuck — hook or blocked push right
-Fault 10: Early extension — hips thrust toward ball, standing up through impact, heel strikes
-Fault 11: Left arm falling to left ribcage in follow-through — hook, right arm dominance`;
+
+Fault 1: Too upright posture at address
+What it looks like: Player standing too tall, insufficient forward tilt from hips, arms reaching out rather than hanging naturally.
+Causes downstream: Club sits on toe, restricted hip turn, tendency to come over the top, inconsistent contact.
+Fix: Push hips back, tilt forward from hip joint, let arms hang naturally, keep weight toward heels.
+Feel cue: "Push your backside toward the wall behind you while letting your upper body fall toward the ball."
+
+Fault 2: Not enough forward press of the hands at address
+What it looks like: Hands level with or behind the clubhead at address.
+Causes downstream: Weight too far right at setup → excess weight right in backswing → can't shift left → flip/scoop at impact → weak high ball flight.
+Fix: Hands pressed slightly toward target creating shaft lean. Left arm and shaft form straight line from shoulder to clubhead.
+Feel cue: "Point the butt end of the grip slightly toward your left hip at address."
+
+Fault 3: No weight shift trigger to start the backswing
+What it looks like: Backswing starts directly with arms/shoulders, no initial weight shift to right foot.
+Causes downstream: Waltz rhythm broken, passive lower body, arm-dominant backswing, no power loading, inconsistent timing.
+Fix: Small deliberate shift to 60/40 right foot BEFORE the backswing begins — then stop and start the backswing separately.
+Feel cue: "Rock onto your right foot, pause for a heartbeat, then let the club follow."
+
+Fault 4: Takeaway too inside or too outside
+What it looks like: Inside — club immediately behind body. Outside — club steeply upward and across body.
+Causes downstream: Inside → club over the top on downswing → pull/hook. Outside → club drops inside → thin/fat contact or hook.
+Fix: Takeaway initiated purely by body rotation, arms and wrists completely passive. Club parallel to ground and parallel to target line at checkpoint.
+Feel cue: "Turn your chest away from the ball and let the club come with it — don't move the club, move your body."
+
+Fault 5: Right elbow falling to the side of the ribcage
+What it looks like: Right elbow disconnects from chest and drops onto ribcage during backswing.
+Causes downstream: Club trapped behind body → either getting stuck (blocked right or hook) or coming over the top (pull or slice).
+Fix: Right arm stays in front of chest throughout backswing. Keep elbows close together. Rotate more with the body.
+Feel cue: "Feel like you could hold a glove between your right elbow and your ribcage."
+
+Fault 6: Across the line or laid off at top
+What it looks like: Across — club points right of target at top. Laid off — club points left of target at top.
+Causes downstream: Across → stuck position → push/block/hook. Laid off → over the top → pull/slice/pull-hook.
+Fix: Fix what happened before it — across line: fix right elbow. Laid off: fix takeaway and increase shoulder rotation.
+Feel cue: "Don't fix the top — fix what happened before it."
+
+Fault 7: Insufficient weight transfer to left at impact
+What it looks like: Too much weight on right foot at impact, body centered or leaning away from target, no reverse K shape.
+Causes downstream: Fat contact, scooping, right arm takeover, weak high ball flight, falling backward.
+Fix: Weight shift to left must begin BEFORE the top of the backswing. Majority of weight on left heel by impact.
+Feel cue: "Start moving left before you reach the top — don't wait."
+
+Fault 8: Coming over the top
+What it looks like: Club thrown outward and over swing plane in downswing, outside-in path through impact.
+Root causes (check in order): 1) Insufficient shoulder rotation, 2) Insufficient weight shift left, 3) Wrong sequencing — hips firing before weight shift.
+Causes downstream: Outside-in path → slice with open face, straight pull with square face, pull-hook with closed face.
+Fix: Check shoulder rotation first. Then weight shift timing. Then sequencing — weight shift must initiate downswing, not hip rotation.
+Feel cue: "Shift left first — let the hips follow the weight, don't spin them."
+
+Fault 9: Getting stuck in the downswing
+What it looks like: Club trapped behind body in downswing, drops too far inside and underneath plane.
+Root causes: Same as Fault 8 — insufficient shoulder rotation, weight shift, or wrong sequencing. Difference is the compensation direction.
+Causes downstream: Hook/snap hook with square or closed face. Pushed block with open face.
+Fix: Same diagnostic order as Fault 8. Keep right elbow in front of body in backswing.
+Feel cue: "Keep the right elbow in front of you going back and there will be room coming down."
+
+Fault 10: Early extension
+What it looks like: Hips thrust toward ball in downswing, upper body rises, spine angle lost before impact.
+Root causes: Insufficient shoulder rotation or incorrect setup — body instinctively thrusts to generate power it couldn't get from rotation.
+Causes downstream: No room for club → heel strikes/shanks, flip through impact, loss of power, inconsistent contact.
+Fix: Check shoulder rotation first. Then setup. Then actively push both hips backward away from ball in downswing while still rotating.
+Feel cues: "Rotate your left hip behind you — not toward the ball." / "Sit back slightly while rotating through the shot."
+
+Fault 11: Left arm falling onto left ribcage in follow-through
+What it looks like: Left arm collapses onto side of left ribcage after impact — mirror of right elbow fault in backswing.
+Root cause: Right arm too dominant through impact, pushing rather than left arm pulling.
+Causes downstream: Clubface closes early → hook or pull-hook. Restricted follow-through.
+Fix: Left arm pulls club through impact. Keep elbows close together through impact and follow-through. Left arm stays straight until swing nearly complete.
+Feel cue: "Pull the club through with your left arm and keep both elbows close together all the way to the finish."`;
 
 // ─── FEEDBACK UI ─────────────────────────────────────────────────────────────
 
@@ -318,13 +401,12 @@ function showFeedbackCard() {
 async function saveFeedback() {
   const t = document.getElementById('feedbackText').value.trim();
   if (!t) { alert('Skriv in din korrigering först.'); return; }
-  document.querySelector('.btn-save-feedback').disabled = true;
-  document.querySelector('.btn-save-feedback').textContent = 'Sparar...';
+  const btn = document.querySelector('.btn-save-feedback');
+  btn.disabled = true; btn.textContent = 'Sparar...';
   await addExample(t);
   document.getElementById('feedbackSaved').style.display = 'block';
   document.getElementById('feedbackText').value = '';
-  document.querySelector('.btn-save-feedback').disabled = false;
-  document.querySelector('.btn-save-feedback').textContent = '💾 Spara som träningsexempel';
+  btn.disabled = false; btn.textContent = '💾 Spara som träningsexempel';
   setTimeout(() => { document.getElementById('feedbackCard').style.display = 'none'; }, 2500);
 }
 
@@ -376,7 +458,6 @@ async function detectSwingByMotion(file) {
     video.onloadedmetadata = () => {
       const dur = video.duration;
       if (dur <= 4) { resolve({ start: 0, end: dur, detected: false }); return; }
-
       const sampleInterval = 0.2;
       const sampleCount = Math.min(Math.floor(dur / sampleInterval), 150);
       const sampleTimes = Array.from({ length: sampleCount }, (_, i) => i * sampleInterval);
@@ -386,24 +467,19 @@ async function detectSwingByMotion(file) {
       const ctx = canvas.getContext('2d');
       const pixelData = [];
       let idx = 0;
-
       function getPixels() {
         if (idx >= sampleTimes.length) { analyzeMotion(pixelData, sampleTimes, dur); return; }
         video.currentTime = sampleTimes[idx];
       }
-
       video.onseeked = () => {
         ctx.drawImage(video, 0, 0, W, H);
         const d = ctx.getImageData(0, 0, W, H).data;
         const gray = [];
         for (let i = 0; i < d.length; i += 4) gray.push((d[i] + d[i+1] + d[i+2]) / 3);
         pixelData.push(gray);
-        idx++;
-        getPixels();
+        idx++; getPixels();
       };
-
       video.onerror = () => resolve({ start: 0, end: dur, detected: false });
-
       function analyzeMotion(frames, times, totalDur) {
         if (frames.length < 3) { resolve({ start: 0, end: totalDur, detected: false }); return; }
         const motion = [];
@@ -435,7 +511,6 @@ async function detectSwingByMotion(file) {
         const end = Math.min(totalDur, times[Math.min(bestEnd, times.length-1)] + 0.5);
         resolve({ start, end, detected: true });
       }
-
       getPixels();
     };
     video.onerror = () => resolve({ start: 0, end: 5, detected: false });
