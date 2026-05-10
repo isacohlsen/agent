@@ -109,7 +109,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div class="label" style="margin-bottom:4px;">Träningsexempel</div>
-        <div style="font-size:13px;color:#888;">AI:n lär sig från dina korrigeringar</div>
+        <div style="font-size:13px;color:#888;">Sparas i molnet — aldrig förlorade</div>
       </div>
       <span class="examples-count" id="examplesCount">0</span>
     </div>
@@ -156,12 +156,115 @@
       <button class="btn btn-save-feedback" onclick="saveFeedback()">💾 Spara som träningsexempel</button>
       <button class="btn btn-skip-feedback" onclick="skipFeedback()">Hoppa över</button>
     </div>
-    <div class="feedback-saved" id="feedbackSaved">✅ Sparat! AI:n använder detta nästa gång.</div>
+    <div class="feedback-saved" id="feedbackSaved">✅ Sparat i molnet! AI:n använder detta nästa gång.</div>
   </div>
 
 </div>
 
 <script>
+// ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://sdhfmyrsixrcyyrlthjc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_DCl-Xh9ryUP9346TDlHJhw_tE2hG3hx';
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`
+};
+
+// ─── SUPABASE FUNCTIONS ───────────────────────────────────────────────────────
+
+let cachedExamples = null;
+
+async function fetchExamples() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/examples?select=id,correction,created_at&order=created_at.asc&limit=100`, { headers: HEADERS });
+    const data = await res.json();
+    cachedExamples = Array.isArray(data) ? data : [];
+    return cachedExamples;
+  } catch { return []; }
+}
+
+async function addExample(correction) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/examples`, {
+      method: 'POST',
+      headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ correction })
+    });
+    cachedExamples = null; // Clear cache
+    await loadExamplesUI();
+  } catch (e) { console.error('Kunde inte spara:', e); }
+}
+
+async function deleteExample(id) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/examples?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: HEADERS
+    });
+    cachedExamples = null;
+    await loadExamplesUI();
+    renderExamplesList();
+  } catch (e) { console.error('Kunde inte ta bort:', e); }
+}
+
+async function clearAllExamples() {
+  if (!confirm('Är du säker? Alla träningsexempel tas bort permanent.')) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/examples?id=gt.0`, {
+      method: 'DELETE',
+      headers: HEADERS
+    });
+    cachedExamples = [];
+    updateExamplesUI(0);
+    renderExamplesList();
+  } catch (e) { console.error('Kunde inte rensa:', e); }
+}
+
+async function loadExamplesUI() {
+  const examples = await fetchExamples();
+  updateExamplesUI(examples.length);
+  return examples;
+}
+
+function updateExamplesUI(count) {
+  document.getElementById('examplesCount').textContent = count;
+  document.getElementById('examplesCard').style.display = count > 0 ? 'block' : 'none';
+}
+
+function toggleExamplesPanel() {
+  const p = document.getElementById('examplesPanel');
+  const open = p.style.display === 'block';
+  p.style.display = open ? 'none' : 'block';
+  document.getElementById('toggleExamples').textContent = open ? 'Visa sparade exempel' : 'Dölj exempel';
+  if (!open) renderExamplesList();
+}
+
+async function renderExamplesList() {
+  const list = document.getElementById('examplesList');
+  list.innerHTML = '<div class="no-examples">Laddar...</div>';
+  const examples = cachedExamples || await fetchExamples();
+  if (!examples.length) { list.innerHTML = '<div class="no-examples">Inga sparade exempel än.</div>'; return; }
+  list.innerHTML = examples.map((e, i) => `
+    <div class="example-item">
+      <strong>Exempel ${i+1} — ${new Date(e.created_at).toLocaleDateString('sv-SE')}</strong>
+      ${e.correction.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+      <button class="example-delete" onclick="deleteExample(${e.id})">×</button>
+    </div>`).join('');
+}
+
+async function buildFewShotSection() {
+  const examples = cachedExamples || await fetchExamples();
+  if (!examples.length) return '';
+  return '\n\nLEARNED CORRECTIONS FROM COACH (real corrections to previous analyses — use to calibrate your thinking):\n'
+    + examples.map((e, i) => `Correction ${i+1}: "${e.correction}"`).join('\n');
+}
+
+async function buildSystemPrompt() {
+  const fewShot = await buildFewShotSection();
+  return `You are an expert golf swing coach. Analyze golf swing videos using this framework:\n\n${COACHING_DOC}\n\nANALYSIS RULES:\n- Work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the order than the visible symptom\n- Be specific and actionable, never generic\n- Study each frame carefully: posture, weight shift, hip/shoulder separation, arm plane, impact position${fewShot}\n\nReturn ONLY valid JSON, no markdown:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10, "label": "Bra/Behöver arbete/Åtgärda först"},\n    "weight_shift": {"score": 1-10, "label": "..."},\n    "lower_body": {"score": 1-10, "label": "..."},\n    "upper_body": {"score": 1-10, "label": "..."},\n    "arms": {"score": 1-10, "label": "..."},\n    "hands": {"score": 1-10, "label": "..."}\n  },\n  "root_cause": "The single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill in Swedish"\n}`;
+}
+
 const COACHING_DOC = `Golf Swing Coaching Philosophy & Framework
 
 The Priority Order
@@ -202,61 +305,6 @@ Fault 9: Getting stuck — hook or blocked push right
 Fault 10: Early extension — hips thrust toward ball, standing up through impact, heel strikes
 Fault 11: Left arm falling to left ribcage in follow-through — hook, right arm dominance`;
 
-// ─── EXAMPLES / FEEDBACK ─────────────────────────────────────────────────────
-
-function getExamples() {
-  try { return JSON.parse(localStorage.getItem('swing_examples') || '[]'); } catch { return []; }
-}
-function saveExample(correction) {
-  const ex = getExamples();
-  ex.push({ correction, timestamp: new Date().toISOString() });
-  if (ex.length > 100) ex.shift();
-  localStorage.setItem('swing_examples', JSON.stringify(ex));
-  updateExamplesUI();
-}
-function deleteExample(i) {
-  const ex = getExamples(); ex.splice(i, 1);
-  localStorage.setItem('swing_examples', JSON.stringify(ex));
-  updateExamplesUI(); renderExamplesList();
-}
-function clearAllExamples() {
-  if (!confirm('Är du säker? Alla träningsexempel tas bort.')) return;
-  localStorage.removeItem('swing_examples');
-  updateExamplesUI(); renderExamplesList();
-}
-function updateExamplesUI() {
-  const n = getExamples().length;
-  document.getElementById('examplesCount').textContent = n;
-  document.getElementById('examplesCard').style.display = n > 0 ? 'block' : 'none';
-}
-function toggleExamplesPanel() {
-  const p = document.getElementById('examplesPanel');
-  const open = p.style.display === 'block';
-  p.style.display = open ? 'none' : 'block';
-  document.getElementById('toggleExamples').textContent = open ? 'Visa sparade exempel' : 'Dölj exempel';
-  if (!open) renderExamplesList();
-}
-function renderExamplesList() {
-  const ex = getExamples();
-  const list = document.getElementById('examplesList');
-  if (!ex.length) { list.innerHTML = '<div class="no-examples">Inga sparade exempel än.</div>'; return; }
-  list.innerHTML = ex.map((e, i) => `
-    <div class="example-item">
-      <strong>Exempel ${i+1} — ${new Date(e.timestamp).toLocaleDateString('sv-SE')}</strong>
-      ${e.correction.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-      <button class="example-delete" onclick="deleteExample(${i})">×</button>
-    </div>`).join('');
-}
-function buildFewShotSection() {
-  const ex = getExamples();
-  if (!ex.length) return '';
-  return '\n\nLEARNED CORRECTIONS FROM COACH (real corrections to previous analyses — use to calibrate your thinking):\n'
-    + ex.map((e, i) => `Correction ${i+1}: "${e.correction}"`).join('\n');
-}
-function buildSystemPrompt() {
-  return `You are an expert golf swing coach. Analyze golf swing videos using this framework:\n\n${COACHING_DOC}\n\nANALYSIS RULES:\n- Work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the order than the visible symptom\n- Be specific and actionable, never generic\n- Study each frame carefully: posture, weight shift, hip/shoulder separation, arm plane, impact position${buildFewShotSection()}\n\nReturn ONLY valid JSON, no markdown:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10, "label": "Bra/Behöver arbete/Åtgärda först"},\n    "weight_shift": {"score": 1-10, "label": "..."},\n    "lower_body": {"score": 1-10, "label": "..."},\n    "upper_body": {"score": 1-10, "label": "..."},\n    "arms": {"score": 1-10, "label": "..."},\n    "hands": {"score": 1-10, "label": "..."}\n  },\n  "root_cause": "The single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill in Swedish"\n}`;
-}
-
 // ─── FEEDBACK UI ─────────────────────────────────────────────────────────────
 
 function showFeedbackCard() {
@@ -266,14 +314,20 @@ function showFeedbackCard() {
   document.getElementById('feedbackSaved').style.display = 'none';
   c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-function saveFeedback() {
+
+async function saveFeedback() {
   const t = document.getElementById('feedbackText').value.trim();
   if (!t) { alert('Skriv in din korrigering först.'); return; }
-  saveExample(t);
+  document.querySelector('.btn-save-feedback').disabled = true;
+  document.querySelector('.btn-save-feedback').textContent = 'Sparar...';
+  await addExample(t);
   document.getElementById('feedbackSaved').style.display = 'block';
   document.getElementById('feedbackText').value = '';
+  document.querySelector('.btn-save-feedback').disabled = false;
+  document.querySelector('.btn-save-feedback').textContent = '💾 Spara som träningsexempel';
   setTimeout(() => { document.getElementById('feedbackCard').style.display = 'none'; }, 2500);
 }
+
 function skipFeedback() { document.getElementById('feedbackCard').style.display = 'none'; }
 
 // ─── VIDEO / UI ───────────────────────────────────────────────────────────────
@@ -312,31 +366,24 @@ function hideError() { document.getElementById('errorMsg').style.display = 'none
 function setLoading(t) { document.getElementById('loadingText').textContent = t; document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 
-// ─── MOTION-BASED SWING DETECTION (no AI tokens!) ────────────────────────────
-// Samples frames every ~200ms, computes pixel diff between consecutive frames,
-// finds the region of highest motion — that's the swing.
+// ─── MOTION-BASED SWING DETECTION ────────────────────────────────────────────
 
 async function detectSwingByMotion(file) {
   return new Promise((resolve) => {
     const video = document.createElement('video');
     video.src = URL.createObjectURL(file);
     video.muted = true;
-    video.onloadedmetadata = async () => {
+    video.onloadedmetadata = () => {
       const dur = video.duration;
-
-      // Short video — no detection needed, use full length
       if (dur <= 4) { resolve({ start: 0, end: dur, detected: false }); return; }
 
-      // Sample every 200ms for motion analysis
       const sampleInterval = 0.2;
       const sampleCount = Math.min(Math.floor(dur / sampleInterval), 150);
       const sampleTimes = Array.from({ length: sampleCount }, (_, i) => i * sampleInterval);
-
       const canvas = document.createElement('canvas');
-      const W = 80, H = 60; // small resolution — fast, no quality needed
+      const W = 80, H = 60;
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext('2d');
-
       const pixelData = [];
       let idx = 0;
 
@@ -348,7 +395,6 @@ async function detectSwingByMotion(file) {
       video.onseeked = () => {
         ctx.drawImage(video, 0, 0, W, H);
         const d = ctx.getImageData(0, 0, W, H).data;
-        // Convert to grayscale array
         const gray = [];
         for (let i = 0; i < d.length; i += 4) gray.push((d[i] + d[i+1] + d[i+2]) / 3);
         pixelData.push(gray);
@@ -360,35 +406,22 @@ async function detectSwingByMotion(file) {
 
       function analyzeMotion(frames, times, totalDur) {
         if (frames.length < 3) { resolve({ start: 0, end: totalDur, detected: false }); return; }
-
-        // Compute frame-to-frame motion score
         const motion = [];
         for (let i = 1; i < frames.length; i++) {
           let diff = 0;
-          for (let p = 0; p < frames[i].length; p++) {
-            diff += Math.abs(frames[i][p] - frames[i-1][p]);
-          }
-          motion.push(diff / frames[i].length); // normalize
+          for (let p = 0; p < frames[i].length; p++) diff += Math.abs(frames[i][p] - frames[i-1][p]);
+          motion.push(diff / frames[i].length);
         }
-
-        // Smooth motion curve
         const smoothed = motion.map((v, i) => {
           const w = 3;
           const slice = motion.slice(Math.max(0, i-w), Math.min(motion.length, i+w+1));
           return slice.reduce((a, b) => a + b, 0) / slice.length;
         });
-
-        // Find threshold: mean + 0.8 * stddev
         const mean = smoothed.reduce((a, b) => a + b, 0) / smoothed.length;
-        const std = Math.sqrt(smoothed.map(v => (v - mean) ** 2).reduce((a, b) => a + b, 0) / smoothed.length);
+        const std = Math.sqrt(smoothed.map(v => (v-mean)**2).reduce((a,b) => a+b, 0) / smoothed.length);
         const threshold = mean + 0.8 * std;
-
-        // Find contiguous high-motion region
         const highMotion = smoothed.map(v => v > threshold);
-
-        // Find largest contiguous block of high motion
-        let bestStart = 0, bestEnd = 0, bestLen = 0;
-        let curStart = -1;
+        let bestStart = 0, bestEnd = 0, bestLen = 0, curStart = -1;
         for (let i = 0; i < highMotion.length; i++) {
           if (highMotion[i] && curStart === -1) curStart = i;
           if (!highMotion[i] && curStart !== -1) {
@@ -396,16 +429,10 @@ async function detectSwingByMotion(file) {
             curStart = -1;
           }
         }
-        if (curStart !== -1 && highMotion.length - curStart > bestLen) {
-          bestStart = curStart; bestEnd = highMotion.length;
-        }
-
+        if (curStart !== -1 && highMotion.length - curStart > bestLen) { bestStart = curStart; bestEnd = highMotion.length; }
         if (bestLen < 3) { resolve({ start: 0, end: totalDur, detected: false }); return; }
-
-        // Map back to timestamps, add buffer
         const start = Math.max(0, times[bestStart] - 0.4);
-        const end = Math.min(totalDur, times[Math.min(bestEnd, times.length - 1)] + 0.5);
-
+        const end = Math.min(totalDur, times[Math.min(bestEnd, times.length-1)] + 0.5);
         resolve({ start, end, detected: true });
       }
 
@@ -424,9 +451,7 @@ function extractFramesFromRange(file, startTime, endTime, n) {
     video.muted = true;
     video.onloadedmetadata = () => {
       const dur = endTime - startTime;
-      const times = n === 1
-        ? [startTime]
-        : Array.from({ length: n }, (_, i) => startTime + (dur / (n - 1)) * i);
+      const times = n === 1 ? [startTime] : Array.from({ length: n }, (_, i) => startTime + (dur / (n-1)) * i);
       const frames = [];
       let idx = 0;
       const canvas = document.createElement('canvas');
@@ -456,32 +481,26 @@ function scoreClass(s) { return s >= 8 ? 'good' : s >= 6 ? 'ok' : 'bad'; }
 function renderResult(data, swingInfo) {
   const labels = { setup: 'Setup', weight_shift: 'Viktsförflyttning', lower_body: 'Underkropp', upper_body: 'Överkropp', arms: 'Armar', hands: 'Händer/Klubba' };
   let html = '';
-
   if (swingInfo?.detected) {
     html += `<div class="swing-info">⛳ Sving detekterat: ${swingInfo.start.toFixed(1)}s – ${swingInfo.end.toFixed(1)}s · 12 frames analyserade</div>`;
   }
-
   html += `<div class="card"><div class="summary-box">${data.summary}</div><div class="score-grid">`;
   for (const [k, v] of Object.entries(data.scores)) {
     html += `<div class="score-tile"><div class="slbl">${labels[k]||k}</div><div class="sval ${scoreClass(v.score)}">${v.score}<span style="font-size:13px;font-weight:400">/10</span></div></div>`;
   }
   html += `</div></div>`;
-
   html += `<div class="card"><div class="section-title">⚠️ Rotorsak</div><div class="root-cause">${data.root_cause}</div>`;
   html += `<div class="section-title">Åtgärda i prioritetsordning</div><ul class="prio-list">`;
   data.priorities.forEach(p => {
     html += `<li class="prio-item"><span class="prio-num">${p.order}</span><div><div class="prio-area">${p.area}</div><div class="prio-issue">${p.issue}</div><div class="prio-fix">${p.fix}</div></div></li>`;
   });
   html += `</ul></div>`;
-
   if (data.positives?.length) {
     html += `<div class="card"><div class="section-title">✅ Det som fungerar bra</div>`;
     data.positives.forEach(p => { html += `<div class="pos-item"><span class="check">✓</span>${p}</div>`; });
     html += `</div>`;
   }
-
   html += `<div class="card"><div class="section-title">🎯 Övning att träna</div><div class="drill-box">${data.drill}</div></div>`;
-
   const result = document.getElementById('result');
   result.innerHTML = html;
   result.style.display = 'block';
@@ -499,21 +518,21 @@ async function analyzeSwing() {
   document.getElementById('feedbackCard').style.display = 'none';
 
   try {
-    // Step 1: Detect swing using motion analysis — zero tokens!
     setLoading('Detekterar sving via rörelsemönster...');
     const swingInfo = await detectSwingByMotion(videoFile);
 
-    // Step 2: Extract 12 frames from the detected swing window
     const msg = swingInfo.detected
       ? `Sving hittades (${swingInfo.start.toFixed(1)}s – ${swingInfo.end.toFixed(1)}s) — extraherar 12 frames...`
       : 'Extraherar frames från hela videon...';
     setLoading(msg);
     const frames = await extractFramesFromRange(videoFile, swingInfo.start, swingInfo.end, 12);
 
-    // Step 3: Send to Gemini for analysis
+    setLoading('Hämtar träningsexempel från molnet...');
+    const systemPrompt = await buildSystemPrompt();
+
     setLoading('Analyserar med AI-coach...');
     const focusNote = selectedFocus !== 'full' ? ` Fokusera extra på ${selectedFocus}-fasen.` : '';
-    const userPrompt = `Analysera detta golfsving.${focusNote} ${frames.length} frames bifogade, jämnt fördelade från address till follow-through. Returnera analys som JSON.`;
+    const userPrompt = `Analysera detta golfsving.${focusNote} ${frames.length} frames bifogade från address till follow-through. Returnera analys som JSON.`;
 
     const contents = [
       ...frames.map(f => ({ inlineData: { mimeType: 'image/jpeg', data: f } })),
@@ -523,7 +542,7 @@ async function analyzeSwing() {
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: buildSystemPrompt(), contents })
+      body: JSON.stringify({ system: systemPrompt, contents })
     });
 
     if (!response.ok) {
@@ -547,7 +566,7 @@ async function analyzeSwing() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-updateExamplesUI();
+loadExamplesUI();
 </script>
 </body>
 </html>
