@@ -448,7 +448,13 @@ function hideError() { document.getElementById('errorMsg').style.display = 'none
 function setLoading(t) { document.getElementById('loadingText').textContent = t; document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 
-// ─── MOTION-BASED SWING DETECTION ────────────────────────────────────────────
+
+
+
+// ─── MOTION-BASED SWING DETECTION (acceleration-based) ───────────────────────
+// A golf swing is EXPLOSIVE — motion accelerates sharply over a short time.
+// Preparations (walking up, grip adjustments) are slow and gradual.
+// We detect the swing by finding where motion ACCELERATES most sharply.
 
 async function detectSwingByMotion(file) {
   return new Promise((resolve) => {
@@ -457,9 +463,10 @@ async function detectSwingByMotion(file) {
     video.muted = true;
     video.onloadedmetadata = () => {
       const dur = video.duration;
-      if (dur <= 4) { resolve({ start: 0, end: dur, detected: false }); return; }
-      const sampleInterval = 0.2;
-      const sampleCount = Math.min(Math.floor(dur / sampleInterval), 150);
+      if (dur <= 3) { resolve({ start: 0, end: dur, detected: false }); return; }
+
+      const sampleInterval = 0.15;
+      const sampleCount = Math.min(Math.floor(dur / sampleInterval), 200);
       const sampleTimes = Array.from({ length: sampleCount }, (_, i) => i * sampleInterval);
       const canvas = document.createElement('canvas');
       const W = 80, H = 60;
@@ -467,10 +474,12 @@ async function detectSwingByMotion(file) {
       const ctx = canvas.getContext('2d');
       const pixelData = [];
       let idx = 0;
+
       function getPixels() {
         if (idx >= sampleTimes.length) { analyzeMotion(pixelData, sampleTimes, dur); return; }
         video.currentTime = sampleTimes[idx];
       }
+
       video.onseeked = () => {
         ctx.drawImage(video, 0, 0, W, H);
         const d = ctx.getImageData(0, 0, W, H).data;
@@ -479,38 +488,66 @@ async function detectSwingByMotion(file) {
         pixelData.push(gray);
         idx++; getPixels();
       };
+
       video.onerror = () => resolve({ start: 0, end: dur, detected: false });
+
       function analyzeMotion(frames, times, totalDur) {
-        if (frames.length < 3) { resolve({ start: 0, end: totalDur, detected: false }); return; }
+        if (frames.length < 5) { resolve({ start: 0, end: totalDur, detected: false }); return; }
+
+        // Step 1: Raw motion between frames
         const motion = [];
         for (let i = 1; i < frames.length; i++) {
           let diff = 0;
           for (let p = 0; p < frames[i].length; p++) diff += Math.abs(frames[i][p] - frames[i-1][p]);
           motion.push(diff / frames[i].length);
         }
+
+        // Step 2: Smooth to reduce noise
         const smoothed = motion.map((v, i) => {
-          const w = 3;
-          const slice = motion.slice(Math.max(0, i-w), Math.min(motion.length, i+w+1));
+          const slice = motion.slice(Math.max(0, i-2), Math.min(motion.length, i+3));
           return slice.reduce((a, b) => a + b, 0) / slice.length;
         });
-        const mean = smoothed.reduce((a, b) => a + b, 0) / smoothed.length;
-        const std = Math.sqrt(smoothed.map(v => (v-mean)**2).reduce((a,b) => a+b, 0) / smoothed.length);
-        const threshold = mean + 0.8 * std;
-        const highMotion = smoothed.map(v => v > threshold);
-        let bestStart = 0, bestEnd = 0, bestLen = 0, curStart = -1;
-        for (let i = 0; i < highMotion.length; i++) {
-          if (highMotion[i] && curStart === -1) curStart = i;
-          if (!highMotion[i] && curStart !== -1) {
-            if (i - curStart > bestLen) { bestLen = i - curStart; bestStart = curStart; bestEnd = i; }
-            curStart = -1;
-          }
+
+        // Step 3: Compute acceleration (rate of motion increase)
+        // Key insight: swing accelerates explosively, preparations don't
+        const acceleration = smoothed.map((v, i) => {
+          if (i < 2) return 0;
+          return Math.max(0, v - smoothed[i - 2]);
+        });
+
+        // Step 4: Find peak acceleration = start of real swing
+        let peakIdx = 0, peakVal = 0;
+        for (let i = 2; i < acceleration.length; i++) {
+          if (acceleration[i] > peakVal) { peakVal = acceleration[i]; peakIdx = i; }
         }
-        if (curStart !== -1 && highMotion.length - curStart > bestLen) { bestStart = curStart; bestEnd = highMotion.length; }
-        if (bestLen < 3) { resolve({ start: 0, end: totalDur, detected: false }); return; }
-        const start = Math.max(0, times[bestStart] - 0.4);
-        const end = Math.min(totalDur, times[Math.min(bestEnd, times.length-1)] + 0.5);
+
+        // Step 5: Sanity check — peak must be meaningfully above background
+        const meanMotion = smoothed.reduce((a, b) => a + b, 0) / smoothed.length;
+        if (smoothed[peakIdx] < meanMotion * 1.5) {
+          resolve({ start: 0, end: totalDur, detected: false }); return;
+        }
+
+        // Step 6: Walk backward to find swing start
+        const baseline = meanMotion * 0.7;
+        let swingStart = peakIdx;
+        for (let i = peakIdx; i >= 0; i--) {
+          if (smoothed[i] < baseline) { swingStart = i; break; }
+        }
+
+        // Step 7: Walk forward to find swing end
+        let swingEnd = peakIdx;
+        for (let i = peakIdx; i < smoothed.length; i++) {
+          swingEnd = i;
+          if (smoothed[i] < baseline) break;
+        }
+
+        const start = Math.max(0, times[swingStart] - 0.3);
+        const end = Math.min(totalDur, (times[swingEnd] || totalDur) + 0.4);
+
+        if (end - start < 0.4) { resolve({ start: 0, end: totalDur, detected: false }); return; }
         resolve({ start, end, detected: true });
       }
+
       getPixels();
     };
     video.onerror = () => resolve({ start: 0, end: 5, detected: false });
