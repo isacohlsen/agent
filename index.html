@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PureAI — Svinganalys</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
@@ -12,7 +12,7 @@
   .header-left { display: flex; align-items: center; gap: 12px; }
   .header h1 { font-size: 18px; font-weight: 500; letter-spacing: -0.3px; }
   .header-user { font-size: 13px; opacity: 0.5; }
-  .logout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .logout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
   .logout-btn:hover { background: rgba(255,255,255,0.1); }
   .container { max-width: 720px; margin: 0 auto; padding: 2rem 1rem; }
   .card { background: white; border-radius: 12px; border: 1px solid #e8e8e4; padding: 1.5rem; margin-bottom: 1rem; }
@@ -27,6 +27,7 @@
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
   .chip { padding: 7px 14px; border-radius: 99px; font-size: 13px; border: 1px solid #ddd; cursor: pointer; color: #555; background: white; transition: all 0.1s; }
   .chip.active { border-color: #1a1a1a; color: #1a1a1a; background: #f0f0eb; font-weight: 500; }
+  .angle-chips .chip.active { border-color: #2a6636; color: #2a6636; background: #e8f5ec; }
   .label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin-bottom: 10px; }
   .btn { width: 100%; padding: 13px; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
   .btn-primary { background: #1a1a1a; color: white; }
@@ -35,47 +36,44 @@
   .btn-secondary { background: white; color: #1a1a1a; border: 1px solid #ddd; margin-top: 8px; }
   .btn-secondary:hover { background: #f5f5f0; }
   .btn-danger { background: white; color: #c0392b; border: 1px solid #fcc; margin-top: 8px; }
-  .btn-danger:hover { background: #fff0ee; }
   .loading { display: none; text-align: center; padding: 2rem; color: #888; font-size: 14px; }
   .spinner { width: 24px; height: 24px; border: 2px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .error { display: none; background: #fff0ee; border: 1px solid #fcc; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #c0392b; margin-bottom: 1rem; }
   .result { display: none; }
-  .swing-info { font-size: 12px; color: #aaa; text-align: center; margin-bottom: 0.5rem; }
+  .swing-info { font-size: 12px; color: #888; text-align: center; margin-bottom: 0.5rem; background: #f0f0eb; border-radius: 6px; padding: 8px 12px; }
   .summary-box { background: #f8f8f4; border-radius: 8px; padding: 14px 16px; font-size: 15px; line-height: 1.6; color: #1a1a1a; font-weight: 500; margin-bottom: 1rem; }
   .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
   .score-tile { background: #f8f8f4; border-radius: 8px; padding: 12px; text-align: center; }
   .score-tile .slbl { font-size: 11px; color: #999; margin-bottom: 4px; }
   .score-tile .sval { font-size: 22px; font-weight: 600; }
   .good { color: #1a9e75; } .ok { color: #c07810; } .bad { color: #d04030; }
-  .section-title { font-size: 14px; font-weight: 600; color: #1a1a1a; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .section-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
   .root-cause { background: #fff5f0; border-left: 3px solid #d04030; border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 14px; color: #333; line-height: 1.6; margin-bottom: 1rem; }
   .prio-list { list-style: none; }
   .prio-item { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid #f0f0eb; }
   .prio-item:last-child { border-bottom: none; }
-  .prio-num { min-width: 24px; height: 24px; border-radius: 50%; background: #f0f0eb; font-size: 12px; font-weight: 600; color: #888; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .prio-num { min-width: 24px; height: 24px; border-radius: 50%; background: #f0f0eb; font-size: 12px; font-weight: 600; color: #888; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .prio-area { font-weight: 600; font-size: 14px; }
   .prio-issue { font-size: 14px; color: #444; margin-top: 2px; line-height: 1.5; }
   .prio-fix { font-size: 13px; color: #888; margin-top: 5px; line-height: 1.5; }
   .prio-fix::before { content: "→ "; }
-  .pos-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0eb; font-size: 14px; color: #333; align-items: flex-start; line-height: 1.5; }
+  .pos-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0eb; font-size: 14px; color: #333; line-height: 1.5; }
   .pos-item:last-child { border-bottom: none; }
-  .check { color: #1a9e75; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .check { color: #1a9e75; font-size: 16px; flex-shrink: 0; }
   .drill-box { background: #f0f8f4; border-radius: 8px; padding: 14px 16px; font-size: 14px; color: #333; line-height: 1.6; }
   .feedback-card { background: white; border-radius: 12px; border: 2px solid #e8e8e4; padding: 1.5rem; margin-bottom: 1rem; margin-top: 0.5rem; }
   .feedback-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   .feedback-header .icon { font-size: 20px; }
-  .feedback-header h3 { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  .feedback-header h3 { font-size: 15px; font-weight: 600; }
   .feedback-header p { font-size: 13px; color: #888; margin-top: 2px; }
-  .feedback-textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 12px; font-size: 14px; font-family: inherit; color: #1a1a1a; resize: vertical; min-height: 100px; background: #fafaf8; transition: border-color 0.15s; outline: none; }
+  .feedback-textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 12px; font-size: 14px; font-family: inherit; color: #1a1a1a; resize: vertical; min-height: 100px; background: #fafaf8; outline: none; }
   .feedback-textarea:focus { border-color: #888; background: white; }
   .feedback-textarea::placeholder { color: #bbb; }
   .feedback-actions { display: flex; gap: 8px; margin-top: 10px; }
   .feedback-actions .btn { width: auto; padding: 10px 20px; font-size: 14px; }
   .btn-save-feedback { background: #1a1a1a; color: white; border: none; border-radius: 8px; cursor: pointer; }
-  .btn-save-feedback:hover { background: #333; }
   .btn-skip-feedback { background: white; color: #888; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; }
-  .btn-skip-feedback:hover { background: #f5f5f0; }
   .feedback-saved { display: none; background: #f0f8f4; border: 1px solid #b2e0cc; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #1a7a55; margin-top: 10px; }
   .examples-count { display: inline-block; background: #1a1a1a; color: white; border-radius: 99px; font-size: 11px; padding: 2px 8px; margin-left: 8px; font-weight: 600; }
   .examples-panel { display: none; margin-top: 12px; }
@@ -85,7 +83,6 @@
   .example-delete:hover { color: #c0392b; background: #fff0ee; }
   .no-examples { font-size: 14px; color: #aaa; text-align: center; padding: 1rem 0; }
   .toggle-examples { background: none; border: none; font-size: 13px; color: #888; cursor: pointer; padding: 0; text-decoration: underline; margin-top: 8px; }
-  .toggle-examples:hover { color: #333; }
   @media (max-width: 480px) { .score-grid { grid-template-columns: repeat(2, 1fr); } .container { padding: 1rem; } .feedback-actions { flex-direction: column; } .feedback-actions .btn { width: 100%; } }
 </style>
 </head>
@@ -95,7 +92,7 @@
   <div class="header-left">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
     <h1>PureAI</h1>
-    <span class="header-user" id="headerUser">Svinganalys</span>
+    <span class="header-user" id="headerUser"></span>
   </div>
   <button class="logout-btn" onclick="logout()">Logga ut</button>
 </div>
@@ -120,7 +117,7 @@
       </div>
       <span class="examples-count" id="examplesCount">0</span>
     </div>
-    <button class="toggle-examples" id="toggleExamples" onclick="toggleExamplesPanel()">Visa sparade exempel</button>
+    <button class="toggle-examples" onclick="toggleExamplesPanel()">Visa sparade exempel</button>
     <div class="examples-panel" id="examplesPanel">
       <div id="examplesList"></div>
       <button class="btn btn-danger" style="margin-top:8px;font-size:13px;padding:9px;" onclick="clearAllExamples()">🗑 Rensa alla exempel</button>
@@ -132,6 +129,12 @@
   </div>
 
   <div class="card" id="optionsCard" style="display:none">
+    <div class="label" style="margin-bottom:10px;">Kameravinkel</div>
+    <div class="chips angle-chips" id="angleChips">
+      <div class="chip active" data-angle="unknown">Vet ej</div>
+      <div class="chip" data-angle="face-on">📷 Face On (framifrån)</div>
+      <div class="chip" data-angle="dtl">📷 DTL (från sidan)</div>
+    </div>
     <div class="label">Fokusområde</div>
     <div class="chips" id="chips">
       <div class="chip active" data-val="full">Hela swinget</div>
@@ -154,11 +157,10 @@
       <span class="icon">✏️</span>
       <div>
         <h3>Lär upp AI:n</h3>
-        <p>Var analysen fel eller missar den något? Rätta till den här så lär sig AI:n till nästa gång.</p>
+        <p>Var analysen fel? Rätta till den här så lär sig AI:n till nästa gång.</p>
       </div>
     </div>
-    <textarea class="feedback-textarea" id="feedbackText"
-      placeholder="T.ex: &quot;Rotorsaken är tidig extension, inte viktsförflyttningen.&quot;"></textarea>
+    <textarea class="feedback-textarea" id="feedbackText" placeholder="T.ex: &quot;Rotorsaken är tidig extension, inte viktsförflyttningen.&quot;"></textarea>
     <div class="feedback-actions">
       <button class="btn btn-save-feedback" onclick="saveFeedback()">💾 Spara som träningsexempel</button>
       <button class="btn btn-skip-feedback" onclick="skipFeedback()">Hoppa över</button>
@@ -170,17 +172,17 @@
 
 <script>
 // ─── SUPABASE ─────────────────────────────────────────────────────────────────
+const { createClient } = window.supabase;
 const SUPABASE_URL = 'https://sdhfmyrsixrcyyrlthjc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_DCl-Xh9ryUP9346TDlHJhw_tE2hG3hx';
-const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+const _sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 let cachedExamples = null;
 
-// ─── EXAMPLES / FEEDBACK ─────────────────────────────────────────────────────
+// ─── EXAMPLES ────────────────────────────────────────────────────────────────
 async function fetchExamples() {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/examples?select=id,correction,created_at&order=created_at.asc&limit=100`, {
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
     });
     const data = await res.json();
     cachedExamples = Array.isArray(data) ? data : [];
@@ -228,7 +230,6 @@ async function clearAllExamples() {
 async function loadExamplesUI() {
   const examples = await fetchExamples();
   updateExamplesUI(examples.length);
-  return examples;
 }
 
 function updateExamplesUI(count) {
@@ -240,7 +241,6 @@ function toggleExamplesPanel() {
   const p = document.getElementById('examplesPanel');
   const open = p.style.display === 'block';
   p.style.display = open ? 'none' : 'block';
-  document.getElementById('toggleExamples').textContent = open ? 'Visa sparade exempel' : 'Dölj exempel';
   if (!open) renderExamplesList();
 }
 
@@ -252,21 +252,24 @@ async function renderExamplesList() {
   list.innerHTML = examples.map((e, i) => `
     <div class="example-item">
       <strong>Exempel ${i+1} — ${new Date(e.created_at).toLocaleDateString('sv-SE')}</strong>
-      ${e.correction.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+      ${e.correction.replace(/</g,'&lt;')}
       <button class="example-delete" onclick="deleteExample(${e.id})">×</button>
     </div>`).join('');
 }
 
-async function buildFewShotSection() {
+async function buildSystemPrompt(angle) {
   const examples = cachedExamples || await fetchExamples();
-  if (!examples.length) return '';
-  return '\n\nLEARNED CORRECTIONS FROM COACH (real corrections — use to calibrate your thinking):\n'
-    + examples.map((e, i) => `Correction ${i+1}: "${e.correction}"`).join('\n');
-}
+  const fewShot = examples.length
+    ? '\n\nLEARNED CORRECTIONS FROM COACH:\n' + examples.map((e,i) => `Correction ${i+1}: "${e.correction}"`).join('\n')
+    : '';
 
-async function buildSystemPrompt() {
-  const fewShot = await buildFewShotSection();
-  return `You are an expert golf swing coach. Analyze golf swing videos using this framework:\n\n${COACHING_DOC}\n\nANALYSIS RULES:\n- Work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the order than the visible symptom\n- Be specific and actionable, never generic\n- Study each frame carefully: posture, weight shift, hip/shoulder separation, arm plane, impact position\n- Reference specific faults by name when applicable\n- Give feel cues from the document where relevant${fewShot}\n\nReturn ONLY valid JSON, no markdown:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10, "label": "Bra/Behöver arbete/Åtgärda först"},\n    "weight_shift": {"score": 1-10, "label": "..."},\n    "lower_body": {"score": 1-10, "label": "..."},\n    "upper_body": {"score": 1-10, "label": "..."},\n    "arms": {"score": 1-10, "label": "..."},\n    "hands": {"score": 1-10, "label": "..."}\n  },\n  "root_cause": "The single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill in Swedish"\n}`;
+  const angleNote = angle === 'face-on'
+    ? '\n\nCAMERA ANGLE: Face On. You can ONLY assess from Face On angle: weight distribution, spine angle, hand forward press, weight shift trail side, passive takeaway, arms in front of body, shoulder rotation, weight shift lead side, lead leg extension at impact, hands ahead of clubhead. Do NOT comment on swing plane or anything only visible from DTL.'
+    : angle === 'dtl'
+    ? '\n\nCAMERA ANGLE: Down the Line (DTL). You can ONLY assess from DTL: knee flex, hip hinge, hands below shoulders, back curvature, swing plane, takeaway path, club position at top, arms in front of body, hip rotation at impact, early extension. Do NOT comment on weight distribution or anything only visible from Face On.'
+    : '\n\nCAMERA ANGLE: Unknown. Assess conservatively — only comment on things clearly visible in the frames.';
+
+  return `You are an expert golf swing coach. Analyze golf swing videos using this framework:\n\n${COACHING_DOC}${angleNote}${fewShot}\n\nANALYSIS RULES:\n- Work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the priority order than the visible symptom\n- Be specific and actionable, never generic\n- Only assess what is visible from the given camera angle\n- Return ONLY valid JSON, no markdown:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10},\n    "weight_shift": {"score": 1-10},\n    "lower_body": {"score": 1-10},\n    "upper_body": {"score": 1-10},\n    "arms": {"score": 1-10},\n    "hands": {"score": 1-10}\n  },\n  "root_cause": "Single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill in Swedish"\n}`;
 }
 
 // ─── FEEDBACK UI ──────────────────────────────────────────────────────────────
@@ -293,9 +296,10 @@ async function saveFeedback() {
 function skipFeedback() { document.getElementById('feedbackCard').style.display = 'none'; }
 
 // ─── VIDEO / UI ───────────────────────────────────────────────────────────────
-let videoFile = null, selectedFocus = 'full';
+let videoFile = null, selectedFocus = 'full', selectedAngle = 'unknown';
 
 document.getElementById('uploadZone').onclick = () => document.getElementById('fileInput').click();
+
 document.getElementById('fileInput').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   if (f.size > 104857600) { showError('Videon är för stor. Max 100MB.'); return; }
@@ -306,9 +310,23 @@ document.getElementById('fileInput').onchange = e => {
   document.getElementById('optionsCard').style.display = 'block';
   hideError();
 };
-document.querySelectorAll('.chip').forEach(c => {
-  c.onclick = () => { document.querySelectorAll('.chip').forEach(x => x.classList.remove('active')); c.classList.add('active'); selectedFocus = c.dataset.val; };
+
+document.querySelectorAll('#chips .chip').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('#chips .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    selectedFocus = c.dataset.val;
+  };
 });
+
+document.querySelectorAll('#angleChips .chip').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('#angleChips .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    selectedAngle = c.dataset.angle;
+  };
+});
+
 document.getElementById('resetBtn').onclick = () => {
   videoFile = null;
   document.getElementById('fileInput').value = '';
@@ -319,8 +337,13 @@ document.getElementById('resetBtn').onclick = () => {
   document.getElementById('result').style.display = 'none';
   document.getElementById('result').innerHTML = '';
   document.getElementById('feedbackCard').style.display = 'none';
+  selectedAngle = 'unknown';
+  selectedFocus = 'full';
+  document.querySelectorAll('#chips .chip').forEach((c,i) => c.classList.toggle('active', i===0));
+  document.querySelectorAll('#angleChips .chip').forEach((c,i) => c.classList.toggle('active', i===0));
   hideError();
 };
+
 document.getElementById('analyzeBtn').onclick = analyzeSwing;
 function showError(msg) { const e = document.getElementById('errorMsg'); e.textContent = msg; e.style.display = 'block'; }
 function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
@@ -340,8 +363,7 @@ async function detectSwingByMotion(file) {
       const sampleCount = Math.min(Math.floor(dur / sampleInterval), 200);
       const sampleTimes = Array.from({ length: sampleCount }, (_, i) => i * sampleInterval);
       const canvas = document.createElement('canvas');
-      const W = 80, H = 60;
-      canvas.width = W; canvas.height = H;
+      canvas.width = 80; canvas.height = 60;
       const ctx = canvas.getContext('2d');
       const pixelData = [];
       let idx = 0;
@@ -350,8 +372,8 @@ async function detectSwingByMotion(file) {
         video.currentTime = sampleTimes[idx];
       }
       video.onseeked = () => {
-        ctx.drawImage(video, 0, 0, W, H);
-        const d = ctx.getImageData(0, 0, W, H).data;
+        ctx.drawImage(video, 0, 0, 80, 60);
+        const d = ctx.getImageData(0, 0, 80, 60).data;
         const gray = [];
         for (let i = 0; i < d.length; i += 4) gray.push((d[i] + d[i+1] + d[i+2]) / 3);
         pixelData.push(gray);
@@ -378,9 +400,8 @@ async function detectSwingByMotion(file) {
         const meanMotion = smoothed.reduce((a, b) => a + b, 0) / smoothed.length;
         if (smoothed[peakIdx] < meanMotion * 1.5) { resolve({ start: 0, end: totalDur, detected: false }); return; }
         const baseline = meanMotion * 0.7;
-        let swingStart = peakIdx;
+        let swingStart = peakIdx, swingEnd = peakIdx;
         for (let i = peakIdx; i >= 0; i--) { if (smoothed[i] < baseline) { swingStart = i; break; } }
-        let swingEnd = peakIdx;
         for (let i = peakIdx; i < smoothed.length; i++) { swingEnd = i; if (smoothed[i] < baseline) break; }
         const start = Math.max(0, times[swingStart] - 0.3);
         const end = Math.min(totalDur, (times[swingEnd] || totalDur) + 0.4);
@@ -402,10 +423,9 @@ function extractFramesFromRange(file, startTime, endTime, n) {
     video.onloadedmetadata = () => {
       const dur = endTime - startTime;
       const times = n === 1 ? [startTime] : Array.from({ length: n }, (_, i) => startTime + (dur / (n-1)) * i);
-      const frames = [];
-      let idx = 0;
-      const canvas = document.createElement('canvas');
+      const frames = [], canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
+      let idx = 0;
       function next() {
         if (idx >= times.length) { resolve(frames); return; }
         video.currentTime = Math.min(times[idx], video.duration - 0.01);
@@ -427,18 +447,20 @@ function extractFramesFromRange(file, startTime, endTime, n) {
 // ─── RENDER RESULT ────────────────────────────────────────────────────────────
 function scoreClass(s) { return s >= 8 ? 'good' : s >= 6 ? 'ok' : 'bad'; }
 
-function renderResult(data, swingInfo) {
+function renderResult(data, swingInfo, angle) {
   const labels = { setup: 'Setup', weight_shift: 'Viktsförflyttning', lower_body: 'Underkropp', upper_body: 'Överkropp', arms: 'Armar', hands: 'Händer/Klubba' };
+  const angleLabel = angle === 'face-on' ? ' · Face On' : angle === 'dtl' ? ' · DTL' : '';
   let html = '';
   if (swingInfo?.detected) {
-    html += `<div class="swing-info">⛳ Sving detekterat: ${swingInfo.start.toFixed(1)}s – ${swingInfo.end.toFixed(1)}s · 12 frames analyserade</div>`;
+    html += `<div class="swing-info">⛳ Sving detekterat: ${swingInfo.start.toFixed(1)}s – ${swingInfo.end.toFixed(1)}s · 12 frames analyserade${angleLabel}</div>`;
+  } else {
+    html += `<div class="swing-info">12 frames analyserade${angleLabel}</div>`;
   }
   html += `<div class="card"><div class="summary-box">${data.summary}</div><div class="score-grid">`;
   for (const [k, v] of Object.entries(data.scores)) {
     html += `<div class="score-tile"><div class="slbl">${labels[k]||k}</div><div class="sval ${scoreClass(v.score)}">${v.score}<span style="font-size:13px;font-weight:400">/10</span></div></div>`;
   }
-  html += `</div></div>`;
-  html += `<div class="card"><div class="section-title">⚠️ Rotorsak</div><div class="root-cause">${data.root_cause}</div>`;
+  html += `</div></div><div class="card"><div class="section-title">⚠️ Rotorsak</div><div class="root-cause">${data.root_cause}</div>`;
   html += `<div class="section-title">Åtgärda i prioritetsordning</div><ul class="prio-list">`;
   data.priorities.forEach(p => {
     html += `<li class="prio-item"><span class="prio-num">${p.order}</span><div><div class="prio-area">${p.area}</div><div class="prio-issue">${p.issue}</div><div class="prio-fix">${p.fix}</div></div></li>`;
@@ -467,34 +489,26 @@ async function analyzeSwing() {
   try {
     setLoading('Detekterar sving via rörelsemönster...');
     const swingInfo = await detectSwingByMotion(videoFile);
-    const msg = swingInfo.detected
+    setLoading(swingInfo.detected
       ? `Sving hittades (${swingInfo.start.toFixed(1)}s – ${swingInfo.end.toFixed(1)}s) — extraherar 12 frames...`
-      : 'Extraherar frames från hela videon...';
-    setLoading(msg);
+      : 'Extraherar frames från hela videon...');
     const frames = await extractFramesFromRange(videoFile, swingInfo.start, swingInfo.end, 12);
     setLoading('Hämtar träningsexempel från molnet...');
-    const systemPrompt = await buildSystemPrompt();
+    const systemPrompt = await buildSystemPrompt(selectedAngle);
     setLoading('Analyserar med AI-coach...');
+    const angleNote = selectedAngle === 'face-on' ? ' Videon är filmad Face On (framifrån).' : selectedAngle === 'dtl' ? ' Videon är filmad DTL (från sidan).' : '';
     const focusNote = selectedFocus !== 'full' ? ` Fokusera extra på ${selectedFocus}-fasen.` : '';
-    const userPrompt = `Analysera detta golfsving.${focusNote} ${frames.length} frames bifogade från address till follow-through. Returnera analys som JSON.`;
-    const contents = [
-      ...frames.map(f => ({ inlineData: { mimeType: 'image/jpeg', data: f } })),
-      { text: userPrompt }
-    ];
+    const userPrompt = `Analysera detta golfsving.${angleNote}${focusNote} ${frames.length} frames bifogade. Returnera analys som JSON.`;
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: systemPrompt, contents })
+      body: JSON.stringify({ system: systemPrompt, contents: [...frames.map(f => ({ inlineData: { mimeType: 'image/jpeg', data: f } })), { text: userPrompt }] })
     });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'API-fel');
-    }
+    if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'API-fel'); }
     const res = await response.json();
-    const text = res.text.replace(/```json|```/g, '').trim();
-    const data = JSON.parse(text);
+    const data = JSON.parse(res.text.replace(/```json|```/g, '').trim());
     hideLoading();
-    renderResult(data, swingInfo);
+    renderResult(data, swingInfo, selectedAngle);
   } catch (err) {
     hideLoading();
     showError('Analys misslyckades: ' + err.message);
@@ -504,46 +518,40 @@ async function analyzeSwing() {
 }
 
 // ─── COACHING DOC ─────────────────────────────────────────────────────────────
-const COACHING_DOC = `Golf Swing Coaching Philosophy & Framework
+const COACHING_DOC = `PRIORITY ORDER: setup → weight shift → lower body → upper body → arms → hands/club. Root cause is almost always earlier in the order than the visible symptom. Parts later in the order have more direct impact on ball flight.
 
-The Priority Order
-The swing is built from the entire body, where different parts take different priorities in a specific order: setup, weight shift between the feet, lower body, upper body (excluding arms), arms, and lastly the hands and club.
-I always start my assessment from the beginning of this order — checking the setup first, then working through to the club. If there is a problem in the arm movement there will almost always be a problem earlier in the order creating it — most commonly lower body timing. By working this way the fundamentals fall into place faster, and you often solve two problems at once by fixing the root cause that created the secondary problem.
-Parts later in the order have more direct impact on ball flight, while things like weight shift provide more lasting consistency once properly ingrained through practice.
+WALTZ RHYTHM: weight shift first, then lower body, then continuing through priority order. Club arrives like a whip. Arms stay in front of body, only moving vertically. Straighten left leg and left arm at impact.
 
-The Swing as a Waltz — Effortless Power
-The swing should flow like a waltz — beginning with the weight shift, followed by the lower body, then continuing through the priority order. When executed correctly the club arrives like a whip, producing effortless power.
-Keep the arms in front of the body throughout the entire swing. They should only move vertically relative to the upper body.
-Straighten the left leg and left arm at impact.
+SWING PLANE (DTL only): Checkpoint 1 takeaway — shaft points at camera when club parallel to ground. Checkpoint 2 top — shaft points at target. Checkpoint 3 downswing — shaft matches checkpoint 1 angle.
 
-The Backswing
-Start with a 50/50 weight split at address. Shift to 60/40 favoring the right foot during the backswing.
-Just before the top begin shifting weight aggressively back to the left.
-At impact, straighten the left leg from the heel as fast and aggressively as possible.
-At the top: hips rotated minimum 45 degrees, shoulders minimum 90 degrees (ideally 100-110), 1:2 ratio between hip and shoulder rotation.
-Arms in front of the upper body, right arm bent, left arm straight.
+BACKSWING: 50/50 at address. 60/40 right during backswing. Just before top — still moving up — shift aggressively left. At impact straighten left leg from heel aggressively. Rotate left hip 45 degrees. At top: hips 45+ degrees, shoulders 90-110 degrees, 1:2 ratio. Arms in front, right arm bent, left arm straight.
 
-Setup — Down the Line
-Slightly bent knees, weight mid-foot or slightly toward heels, hip pushed back, upper body tilted forward from hips, lower back straight, arms hang straight down, club sits flat.
+DOWNSWING is a consequence of backswing: too much right going back → over-shift left coming down. Arms inside on takeaway → over the top on the way down.
 
-Setup — Face On
-Feet just outside shoulder width, left foot ~15 deg open, right foot 5-10 deg open, arms form small Y shape with hands pressed forward toward the target, hip closest to target slightly higher creating small spine tilt away from target.
+SETUP DTL: slightly bent knees, weight mid-foot toward heels, hip pushed back, tilted forward from hips, lower back straight, arms hang naturally, club flat, three body lines parallel to target.
 
-Impact Position
-Hips ~45 degrees open. Weight clearly on left foot. Body forms reverse K shape. Hands visibly ahead of clubhead. Left arm dominant through impact.
+SETUP FACE ON: feet just outside shoulder width, left foot 15 degrees open, right foot 5-10 degrees, left arm straight, hands pressed forward forming Y with shaft lean, hip closest to target slightly higher, 50/50 weight.
 
-Common Faults
-Fault 1: Too upright posture — causes over the top, inconsistent contact
-Fault 2: No forward press of hands — causes scooping, weak high ball flight
-Fault 3: No weight shift trigger — breaks waltz rhythm, passive lower body
-Fault 4: Takeaway too inside/outside — mirrors in downswing, causes pulls or blocks
-Fault 5: Right elbow falling to ribcage — causes getting stuck or coming over the top
-Fault 6: Across the line or laid off at top — consequence of elbow/takeaway faults
-Fault 7: Insufficient weight transfer to left — fat contact, scooping, weak ball flight
-Fault 8: Coming over the top — outside-in path, slice or pull
-Fault 9: Getting stuck — hook or blocked push right
-Fault 10: Early extension — hips thrust toward ball, standing up through impact, heel strikes
-Fault 11: Left arm falling to left ribcage in follow-through — hook, right arm dominance`;
+IMPACT DTL: hips remain back, no standing up. Right foot on inside edge. Left foot weight on heel. Hips 45 degrees open.
+
+IMPACT FACE ON: weight clearly left. Reverse K body shape. Hands visibly ahead of clubhead. Left arm dominant — stabilizes face, keeps hands ahead. Right arm closes face, left arm keeps it open.
+
+CAMERA ANGLE RULE — CRITICAL: What is visible from Face On CANNOT be assessed from DTL, and vice versa.
+DTL reveals ONLY: knee flex, hip hinge, hands below shoulders, back curvature, swing plane, takeaway path, club position at top, arms in front of body, hip rotation at impact, early extension.
+Face On reveals ONLY: weight distribution, spine angle, hand forward press, weight shift trail side, passive takeaway, arms in front of body, shoulder rotation, weight shift lead side, lead leg extension at impact, hands ahead of clubhead at impact.
+NEVER assess weight shift from DTL. NEVER assess swing plane from Face On.
+
+FAULT 1 — Too upright posture: club on toe, restricted turn, over the top. Fix: hips back, tilt from hip joint, arms hang, weight toward heels. Feel: push backside toward wall behind you.
+FAULT 2 — No forward press: scooping, weak high ball. Fix: hands toward target, shaft lean. Never open the face when pressing forward.
+FAULT 3 — No weight shift trigger: passive lower body, no rhythm. Fix: isolated 60/40 right shift before backswing, not a continuous sway.
+FAULT 4 — Takeaway inside/outside: mirrors in downswing. Fix: body rotation initiates, arms completely passive.
+FAULT 5 — Right elbow to ribcage: stuck or over the top. Fix: right arm in front of chest always, space between elbow and ribcage.
+FAULT 6 — Across line or laid off: consequence of fault 4 or 5. Fix earlier fault, never manipulate top position directly.
+FAULT 7 — Insufficient weight transfer left: fat contact, scooping. Fix: shift left starts before top of backswing, not a lateral lunge.
+FAULT 8 — Coming over the top: outside-in, slice/pull. Root causes in order: 1) insufficient shoulder rotation 2) missing weight shift 3) hips firing before weight shift. Fix in that order. Cannot fix in downswing — too fast.
+FAULT 9 — Getting stuck: hook or blocked push. Same root causes as fault 8, opposite compensation. Fix same way.
+FAULT 10 — Early extension: hips thrust toward ball, standing up, heel strikes, shanks. Root: insufficient rotation or bad setup. Fix: more rotation, actively push hips BACKWARD away from ball while rotating. Feel: sitting back while swinging through.
+FAULT 11 — Left arm to ribcage in follow through: right arm dominance, hook. Fix: left arm dominance through impact, elbows close together through impact and follow through.`;
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 async function logout() {
@@ -551,16 +559,12 @@ async function logout() {
   window.location.href = '/login.html';
 }
 
-// Check session on load
 _sb.auth.getSession().then(({ data }) => {
   if (!data.session) {
     window.location.href = '/login.html';
     return;
   }
-  // Show email in header
-  const email = data.session.user.email;
-  document.getElementById('headerUser').textContent = email;
-  // Load examples
+  document.getElementById('headerUser').textContent = data.session.user.email;
   loadExamplesUI();
 });
 </script>
