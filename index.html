@@ -5,122 +5,141 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PureAI — Svinganalys</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
-  .header { background: #1a1a1a; color: white; padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-  .header-left { display: flex; align-items: center; gap: 12px; }
-  .header h1 { font-size: 18px; font-weight: 500; letter-spacing: -0.3px; }
-  .header-user { font-size: 13px; opacity: 0.5; }
-  .logout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-  .logout-btn:hover { background: rgba(255,255,255,0.1); }
-  .container { max-width: 720px; margin: 0 auto; padding: 2rem 1rem; }
-  .card { background: white; border-radius: 12px; border: 1px solid #e8e8e4; padding: 1.5rem; margin-bottom: 1rem; }
-  .upload-zone { border: 1.5px dashed #ccc; border-radius: 10px; padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.15s; background: #fafaf8; }
-  .upload-zone:hover { border-color: #888; background: #f0f0eb; }
-  .upload-zone svg { width: 36px; height: 36px; stroke: #aaa; margin-bottom: 12px; }
-  .upload-zone p { font-size: 15px; color: #555; }
-  .upload-zone small { font-size: 13px; color: #aaa; margin-top: 4px; display: block; }
-  #fileInput { display: none; }
-  .preview { display: none; margin-bottom: 1rem; }
-  .preview video { width: 100%; border-radius: 10px; border: 1px solid #e8e8e4; max-height: 400px; }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
-  .chip { padding: 7px 14px; border-radius: 99px; font-size: 13px; border: 1px solid #ddd; cursor: pointer; color: #555; background: white; transition: all 0.1s; }
-  .chip.active { border-color: #1a1a1a; color: #1a1a1a; background: #f0f0eb; font-weight: 500; }
-  .angle-chips .chip.active { border-color: #2a6636; color: #2a6636; background: #e8f5ec; }
-  .label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin-bottom: 10px; }
-  .btn { width: 100%; padding: 13px; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-primary { background: #1a1a1a; color: white; }
-  .btn-primary:hover { background: #333; }
-  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-  .btn-secondary { background: white; color: #1a1a1a; border: 1px solid #ddd; margin-top: 8px; }
-  .btn-secondary:hover { background: #f5f5f0; }
-  .btn-danger { background: white; color: #c0392b; border: 1px solid #fcc; margin-top: 8px; }
-  .loading { display: none; text-align: center; padding: 2rem; color: #888; font-size: 14px; }
-  .spinner { width: 24px; height: 24px; border: 2px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .error { display: none; background: #fff0ee; border: 1px solid #fcc; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #c0392b; margin-bottom: 1rem; }
-  .result { display: none; }
-  .swing-info { font-size: 12px; color: #888; text-align: center; margin-bottom: 0.5rem; background: #f0f0eb; border-radius: 6px; padding: 8px 12px; }
-  .summary-box { background: #f8f8f4; border-radius: 8px; padding: 14px 16px; font-size: 15px; line-height: 1.6; color: #1a1a1a; font-weight: 500; margin-bottom: 1rem; }
-  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
-  .score-tile { background: #f8f8f4; border-radius: 8px; padding: 12px; text-align: center; }
-  .score-tile .slbl { font-size: 11px; color: #999; margin-bottom: 4px; }
-  .score-tile .sval { font-size: 22px; font-weight: 600; }
-  .good { color: #1a9e75; } .ok { color: #c07810; } .bad { color: #d04030; }
-  .section-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
-  .root-cause { background: #fff5f0; border-left: 3px solid #d04030; border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 14px; color: #333; line-height: 1.6; margin-bottom: 1rem; }
-  .prio-list { list-style: none; }
-  .prio-item { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid #f0f0eb; }
-  .prio-item:last-child { border-bottom: none; }
-  .prio-num { min-width: 24px; height: 24px; border-radius: 50%; background: #f0f0eb; font-size: 12px; font-weight: 600; color: #888; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .prio-area { font-weight: 600; font-size: 14px; }
-  .prio-issue { font-size: 14px; color: #444; margin-top: 2px; line-height: 1.5; }
-  .prio-fix { font-size: 13px; color: #888; margin-top: 5px; line-height: 1.5; }
-  .prio-fix::before { content: "→ "; }
-  .pos-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0eb; font-size: 14px; color: #333; line-height: 1.5; }
-  .pos-item:last-child { border-bottom: none; }
-  .check { color: #1a9e75; font-size: 16px; flex-shrink: 0; }
-  .drill-box { background: #f0f8f4; border-radius: 8px; padding: 14px 16px; font-size: 14px; color: #333; line-height: 1.6; }
-  .feedback-card { background: white; border-radius: 12px; border: 2px solid #e8e8e4; padding: 1.5rem; margin-bottom: 1rem; margin-top: 0.5rem; }
-  .feedback-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .feedback-header .icon { font-size: 20px; }
-  .feedback-header h3 { font-size: 15px; font-weight: 600; }
-  .feedback-header p { font-size: 13px; color: #888; margin-top: 2px; }
-  .feedback-textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 12px; font-size: 14px; font-family: inherit; color: #1a1a1a; resize: vertical; min-height: 100px; background: #fafaf8; outline: none; }
-  .feedback-textarea:focus { border-color: #888; background: white; }
-  .feedback-textarea::placeholder { color: #bbb; }
-  .feedback-actions { display: flex; gap: 8px; margin-top: 10px; }
-  .feedback-actions .btn { width: auto; padding: 10px 20px; font-size: 14px; }
-  .btn-save-feedback { background: #1a1a1a; color: white; border: none; border-radius: 8px; cursor: pointer; }
-  .btn-skip-feedback { background: white; color: #888; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; }
-  .feedback-saved { display: none; background: #f0f8f4; border: 1px solid #b2e0cc; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #1a7a55; margin-top: 10px; }
-  .examples-count { display: inline-block; background: #1a1a1a; color: white; border-radius: 99px; font-size: 11px; padding: 2px 8px; margin-left: 8px; font-weight: 600; }
-  .examples-panel { display: none; margin-top: 12px; }
-  .example-item { background: #f8f8f4; border-radius: 8px; padding: 12px; margin-bottom: 8px; font-size: 13px; color: #555; position: relative; line-height: 1.5; }
-  .example-item strong { color: #1a1a1a; display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .example-delete { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
-  .example-delete:hover { color: #c0392b; background: #fff0ee; }
-  .no-examples { font-size: 14px; color: #aaa; text-align: center; padding: 1rem 0; }
-  .toggle-examples { background: none; border: none; font-size: 13px; color: #888; cursor: pointer; padding: 0; text-decoration: underline; margin-top: 8px; }
-  @media (max-width: 480px) { .score-grid { grid-template-columns: repeat(2, 1fr); } .container { padding: 1rem; } .feedback-actions { flex-direction: column; } .feedback-actions .btn { width: 100%; } }
+  :root{--green-dark:#1e4d2b;--green:#2a6636;--green-mid:#3a8a4a;--green-light:#e8f5ec;--green-pale:#f2faf4;--white:#ffffff;--off-white:#f8f9f7;--dark:#111c14;--text:#2c3e30;--muted:#6b7e6e;--border:#dde8df;--shadow:0 2px 20px rgba(30,77,43,0.07);--shadow-lg:0 8px 40px rgba(30,77,43,0.12);}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--green-pale);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 4rem;height:68px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+  .nav-user{font-size:13px;color:var(--muted);}
+  .logout-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:7px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+  .logout-btn:hover{border-color:var(--green);color:var(--green);}
+  .main{max-width:720px;margin:0 auto;padding:5.5rem 1.5rem 3rem;}
+  .upload-card{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:2rem;margin-bottom:1rem;box-shadow:var(--shadow);}
+  .section-label{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:12px;}
+  .upload-zone{border:1.5px dashed var(--border);border-radius:10px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--green-pale);}
+  .upload-zone:hover{border-color:var(--green-mid);background:var(--green-light);}
+  .upload-icon{width:48px;height:48px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;}
+  .upload-icon svg{stroke:var(--green);width:22px;height:22px;}
+  .upload-zone h3{font-size:15px;font-weight:500;color:var(--dark);margin-bottom:4px;}
+  .upload-zone p{font-size:13px;color:var(--muted);font-weight:300;}
+  #fileInput{display:none;}
+  .preview{display:none;margin-bottom:1rem;}
+  .preview video{width:100%;border-radius:10px;border:1px solid var(--border);max-height:380px;background:#000;}
+  .options-card{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:1.75rem;margin-bottom:1rem;box-shadow:var(--shadow);display:none;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0;}
+  .chip{padding:7px 16px;border-radius:99px;font-size:13px;border:1px solid var(--border);cursor:pointer;color:var(--muted);background:var(--white);transition:all 0.15s;font-family:inherit;}
+  .chip:hover{border-color:var(--green-mid);color:var(--green);}
+  .chip.active{border-color:var(--green-dark);color:var(--green-dark);background:var(--green-pale);font-weight:500;}
+  .angle-chip.active{border-color:var(--green-mid);color:var(--green-mid);background:var(--green-light);}
+  .divider{height:1px;background:var(--border);margin:1.25rem 0;}
+  .btn{width:100%;padding:13px;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;border:none;transition:all 0.2s;font-family:inherit;}
+  .btn-primary{background:var(--green-dark);color:white;margin-top:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 4px 12px rgba(30,77,43,0.15);}
+  .btn-primary:hover{background:var(--green);transform:translateY(-1px);}
+  .btn-primary:disabled{background:#aaa;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn-secondary{background:var(--white);color:var(--muted);border:1px solid var(--border);margin-top:8px;}
+  .btn-secondary:hover{border-color:var(--green-mid);color:var(--green);}
+  .examples-card{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:1.5rem;margin-bottom:1rem;box-shadow:var(--shadow);display:none;}
+  .examples-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .examples-count{background:var(--green-dark);color:white;border-radius:99px;font-size:11px;padding:3px 10px;font-weight:600;}
+  .toggle-btn{background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit;text-decoration:underline;}
+  .toggle-btn:hover{color:var(--green);}
+  .examples-panel{display:none;margin-top:12px;}
+  .example-item{background:var(--green-pale);border-radius:8px;padding:12px;margin-bottom:8px;font-size:13px;color:var(--text);position:relative;line-height:1.6;border:1px solid var(--border);}
+  .example-item strong{color:var(--green);display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;}
+  .example-delete{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--border);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:4px;}
+  .example-delete:hover{color:#c0392b;background:#fff0ee;}
+  .no-examples{font-size:13px;color:var(--muted);text-align:center;padding:1rem 0;}
+  .clear-btn{background:none;border:1px solid #fcc;color:#c0392b;border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;margin-top:8px;width:100%;}
+  .clear-btn:hover{background:#fff0ee;}
+  .error{display:none;background:#fff0ee;border:1px solid #fcc;border-radius:8px;padding:12px 16px;font-size:14px;color:#c0392b;margin-bottom:1rem;}
+  .loading{display:none;background:var(--white);border-radius:12px;border:1px solid var(--border);padding:2.5rem;text-align:center;margin-bottom:1rem;box-shadow:var(--shadow);}
+  .spinner{width:28px;height:28px;border:2.5px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 1rem;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-text{font-size:14px;color:var(--muted);font-weight:300;}
+  .result{display:none;}
+  .swing-info{font-size:12px;color:var(--muted);text-align:center;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:0.75rem;}
+  .result-card{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:1.75rem;margin-bottom:1rem;box-shadow:var(--shadow);}
+  .summary-text{font-family:'Playfair Display',serif;font-size:1.1rem;font-style:italic;color:var(--dark);line-height:1.6;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
+  .score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .score-tile{background:var(--green-pale);border-radius:8px;padding:12px;text-align:center;border:1px solid var(--border);}
+  .score-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .score-val{font-size:20px;font-weight:600;}
+  .good{color:#1a7a55;} .ok{color:#b8860b;} .bad{color:#c0392b;}
+  .result-section{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border);}
+  .result-section-title{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:10px;}
+  .root-cause{background:var(--green-pale);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:12px 14px;font-size:14px;color:var(--dark);line-height:1.7;}
+  .prio-list{list-style:none;}
+  .prio-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .prio-item:last-child{border-bottom:none;padding-bottom:0;}
+  .prio-num{min-width:26px;height:26px;border-radius:50%;background:var(--green-dark);color:white;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+  .prio-area{font-weight:600;font-size:14px;color:var(--dark);}
+  .prio-issue{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.6;}
+  .prio-fix{font-size:13px;color:var(--green);margin-top:4px;line-height:1.6;}
+  .prio-fix::before{content:"→ ";}
+  .pos-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--text);line-height:1.6;}
+  .pos-item:last-child{border-bottom:none;}
+  .check{color:var(--green-mid);font-weight:600;flex-shrink:0;}
+  .drill-box{background:var(--green-pale);border-radius:8px;padding:14px;font-size:14px;color:var(--dark);line-height:1.7;border:1px solid var(--border);}
+  .feedback-card{background:var(--white);border-radius:12px;border:1.5px solid var(--border);padding:1.75rem;margin-bottom:1rem;box-shadow:var(--shadow);display:none;}
+  .feedback-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:1rem;}
+  .feedback-icon{width:36px;height:36px;background:var(--green-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+  .feedback-header h3{font-size:15px;font-weight:600;color:var(--dark);margin-bottom:3px;}
+  .feedback-header p{font-size:13px;color:var(--muted);font-weight:300;line-height:1.5;}
+  .feedback-textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;color:var(--dark);resize:vertical;min-height:90px;background:var(--green-pale);outline:none;transition:border-color 0.2s;}
+  .feedback-textarea:focus{border-color:var(--green);background:var(--white);}
+  .feedback-textarea::placeholder{color:#b0c4b4;}
+  .feedback-actions{display:flex;gap:8px;margin-top:10px;}
+  .feedback-actions .btn{width:auto;padding:10px 18px;font-size:13px;margin:0;}
+  .btn-save{background:var(--green-dark);color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;}
+  .btn-save:hover{background:var(--green);}
+  .btn-skip{background:var(--white);color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;}
+  .btn-skip:hover{border-color:var(--green-mid);}
+  .feedback-saved{display:none;background:var(--green-light);border:1px solid #b2d8be;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green-dark);margin-top:10px;}
+  @media(max-width:900px){nav{padding:0 1.5rem;}.main{padding:5rem 1rem 2rem;}}
+  @media(max-width:480px){.score-grid{grid-template-columns:repeat(2,1fr);}.feedback-actions{flex-direction:column;}.feedback-actions .btn{width:100%;}}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-    <h1>PureAI</h1>
-    <span class="header-user" id="headerUser"></span>
+<nav>
+  <a href="/landing.html" style="text-decoration:none;display:flex;align-items:center;">
+    <svg height="26" viewBox="0 0 195 52" xmlns="http://www.w3.org/2000/svg">
+      <text y="42" style="font-family:'Inter',sans-serif;font-size:42px;letter-spacing:-2px;"><tspan style="font-weight:600;fill:#1e4d2b;">Pure</tspan><tspan style="font-weight:300;fill:#3a8a4a;">AI</tspan></text>
+    </svg>
+  </a>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <span class="nav-user" id="headerUser"></span>
+    <button class="logout-btn" onclick="logout()">Logga ut</button>
   </div>
-  <button class="logout-btn" onclick="logout()">Logga ut</button>
-</div>
+</nav>
 
-<div class="container">
+<div class="main">
 
-  <div class="card" id="uploadCard">
-    <div class="label">Ladda upp video</div>
+  <div class="upload-card" id="uploadCard">
+    <div class="section-label">Ladda upp video</div>
     <div class="upload-zone" id="uploadZone">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l-4 4m0 0l-4-4m4 4V3m0 18H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2h-4"/></svg>
-      <p>Klicka för att välja video</p>
-      <small>MP4, MOV, WebM — max 100MB</small>
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      </div>
+      <h3>Klicka för att välja video</h3>
+      <p>MP4, MOV, WebM — max 100MB</p>
     </div>
     <input type="file" id="fileInput" accept="video/*">
   </div>
 
-  <div class="card" id="examplesCard" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
+  <div class="examples-card" id="examplesCard">
+    <div class="examples-header">
       <div>
-        <div class="label" style="margin-bottom:4px;">Träningsexempel</div>
-        <div style="font-size:13px;color:#888;">Sparas i molnet — aldrig förlorade</div>
+        <div class="section-label" style="margin-bottom:2px;">Träningsexempel</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:300;">Sparas i molnet</div>
       </div>
       <span class="examples-count" id="examplesCount">0</span>
     </div>
-    <button class="toggle-examples" onclick="toggleExamplesPanel()">Visa sparade exempel</button>
+    <button class="toggle-btn" onclick="toggleExamplesPanel()">Visa sparade exempel</button>
     <div class="examples-panel" id="examplesPanel">
       <div id="examplesList"></div>
-      <button class="btn btn-danger" style="margin-top:8px;font-size:13px;padding:9px;" onclick="clearAllExamples()">🗑 Rensa alla exempel</button>
+      <button class="clear-btn" onclick="clearAllExamples()">🗑 Rensa alla exempel</button>
     </div>
   </div>
 
@@ -128,14 +147,15 @@
     <video id="videoEl" controls playsinline></video>
   </div>
 
-  <div class="card" id="optionsCard" style="display:none">
-    <div class="label" style="margin-bottom:10px;">Kameravinkel</div>
-    <div class="chips angle-chips" id="angleChips">
-      <div class="chip active" data-angle="unknown">Vet ej</div>
-      <div class="chip" data-angle="face-on">📷 Face On (framifrån)</div>
-      <div class="chip" data-angle="dtl">📷 DTL (från sidan)</div>
+  <div class="options-card" id="optionsCard">
+    <div class="section-label">Kameravinkel</div>
+    <div class="chips" id="angleChips">
+      <div class="chip angle-chip active" data-angle="unknown">Vet ej</div>
+      <div class="chip angle-chip" data-angle="face-on">📷 Face On</div>
+      <div class="chip angle-chip" data-angle="dtl">📷 DTL</div>
     </div>
-    <div class="label">Fokusområde</div>
+    <div class="divider"></div>
+    <div class="section-label">Fokusområde</div>
     <div class="chips" id="chips">
       <div class="chip active" data-val="full">Hela swinget</div>
       <div class="chip" data-val="setup">Setup</div>
@@ -149,12 +169,15 @@
   </div>
 
   <div class="error" id="errorMsg"></div>
-  <div class="loading" id="loading"><div class="spinner"></div><span id="loadingText">Förbereder...</span></div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Förbereder...</div>
+  </div>
   <div class="result" id="result"></div>
 
-  <div class="feedback-card" id="feedbackCard" style="display:none">
+  <div class="feedback-card" id="feedbackCard">
     <div class="feedback-header">
-      <span class="icon">✏️</span>
+      <div class="feedback-icon">✏️</div>
       <div>
         <h3>Lär upp AI:n</h3>
         <p>Var analysen fel? Rätta till den här så lär sig AI:n till nästa gång.</p>
@@ -162,23 +185,21 @@
     </div>
     <textarea class="feedback-textarea" id="feedbackText" placeholder="T.ex: &quot;Rotorsaken är tidig extension, inte viktsförflyttningen.&quot;"></textarea>
     <div class="feedback-actions">
-      <button class="btn btn-save-feedback" onclick="saveFeedback()">💾 Spara som träningsexempel</button>
-      <button class="btn btn-skip-feedback" onclick="skipFeedback()">Hoppa över</button>
+      <button class="btn btn-save" onclick="saveFeedback()">💾 Spara som träningsexempel</button>
+      <button class="btn btn-skip" onclick="skipFeedback()">Hoppa över</button>
     </div>
-    <div class="feedback-saved" id="feedbackSaved">✅ Sparat i molnet! AI:n använder detta nästa gång.</div>
+    <div class="feedback-saved" id="feedbackSaved">✅ Sparat! AI:n använder detta nästa gång.</div>
   </div>
 
 </div>
 
 <script>
-// ─── SUPABASE ─────────────────────────────────────────────────────────────────
 const { createClient } = window.supabase;
 const SUPABASE_URL = 'https://sdhfmyrsixrcyyrlthjc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_DCl-Xh9ryUP9346TDlHJhw_tE2hG3hx';
 const _sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 let cachedExamples = null;
 
-// ─── EXAMPLES ────────────────────────────────────────────────────────────────
 async function fetchExamples() {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/examples?select=id,correction,created_at&order=created_at.asc&limit=100`, {
@@ -251,7 +272,7 @@ async function renderExamplesList() {
   if (!examples.length) { list.innerHTML = '<div class="no-examples">Inga sparade exempel än.</div>'; return; }
   list.innerHTML = examples.map((e, i) => `
     <div class="example-item">
-      <strong>Exempel ${i+1} — ${new Date(e.created_at).toLocaleDateString('sv-SE')}</strong>
+      <strong>Exempel ${i+1} · ${new Date(e.created_at).toLocaleDateString('sv-SE')}</strong>
       ${e.correction.replace(/</g,'&lt;')}
       <button class="example-delete" onclick="deleteExample(${e.id})">×</button>
     </div>`).join('');
@@ -260,19 +281,16 @@ async function renderExamplesList() {
 async function buildSystemPrompt(angle) {
   const examples = cachedExamples || await fetchExamples();
   const fewShot = examples.length
-    ? '\n\nLEARNED CORRECTIONS FROM COACH:\n' + examples.map((e,i) => `Correction ${i+1}: "${e.correction}"`).join('\n')
+    ? '\n\nLEARNED CORRECTIONS FROM COACH (calibrate your analysis based on these):\n' + examples.map((e,i) => `Correction ${i+1}: "${e.correction}"`).join('\n')
     : '';
-
   const angleNote = angle === 'face-on'
-    ? '\n\nCAMERA ANGLE: Face On. You can ONLY assess from Face On angle: weight distribution, spine angle, hand forward press, weight shift trail side, passive takeaway, arms in front of body, shoulder rotation, weight shift lead side, lead leg extension at impact, hands ahead of clubhead. Do NOT comment on swing plane or anything only visible from DTL.'
+    ? '\n\nCAMERA ANGLE: Face On. From this angle you CAN observe: weight distribution at address, spine angle, hand forward press, weight shift to trail side during backswing, passive takeaway, arms in front of body, shoulder rotation, weight shift to lead side during downswing, lead leg extension at impact, hands ahead of clubhead at impact. You CANNOT observe: knee flex, whether the club is on or off the plane. NEVER comment on swing plane from Face On.'
     : angle === 'dtl'
-    ? '\n\nCAMERA ANGLE: Down the Line (DTL). You can ONLY assess from DTL: knee flex, hip hinge, hands below shoulders, back curvature, swing plane, takeaway path, club position at top, arms in front of body, hip rotation at impact, early extension. Do NOT comment on weight distribution or anything only visible from Face On.'
-    : '\n\nCAMERA ANGLE: Unknown. Assess conservatively — only comment on things clearly visible in the frames.';
-
-  return `You are an expert golf swing coach. Analyze golf swing videos using this framework:\n\n${COACHING_DOC}${angleNote}${fewShot}\n\nANALYSIS RULES:\n- Work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the priority order than the visible symptom\n- Be specific and actionable, never generic\n- Only assess what is visible from the given camera angle\n- Return ONLY valid JSON, no markdown:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10},\n    "weight_shift": {"score": 1-10},\n    "lower_body": {"score": 1-10},\n    "upper_body": {"score": 1-10},\n    "arms": {"score": 1-10},\n    "hands": {"score": 1-10}\n  },\n  "root_cause": "Single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill in Swedish"\n}`;
+    ? '\n\nCAMERA ANGLE: Down the Line (DTL). From this angle you CAN observe: knee flex and hip hinge at address, whether hands hang below shoulders, back curvature, whether club is on plane, takeaway path, club position at top, whether arms remain in front of body, lead hip rotation through impact, early extension. You CANNOT observe: weight shift between feet — ever. NEVER comment on weight shift from DTL.'
+    : '\n\nCAMERA ANGLE: Unknown. Be conservative — only comment on elements clearly visible regardless of angle.';
+  return `You are an expert golf swing coach trained by an experienced competitive golfer. Analyze golf swing videos using this coaching framework:\n\n${COACHING_DOC}${angleNote}${fewShot}\n\nANALYSIS RULES:\n- Always work through priority order: setup → weight shift → lower body → upper body → arms → hands/club\n- Root cause is almost always earlier in the priority order than the visible symptom\n- Be specific and actionable — never generic\n- Only assess what is reliably visible from the given camera angle\n- Return ONLY valid JSON, no markdown fences:\n{\n  "summary": "One sentence in Swedish",\n  "scores": {\n    "setup": {"score": 1-10},\n    "weight_shift": {"score": 1-10},\n    "lower_body": {"score": 1-10},\n    "upper_body": {"score": 1-10},\n    "arms": {"score": 1-10},\n    "hands": {"score": 1-10}\n  },\n  "root_cause": "Single most important fix in Swedish",\n  "priorities": [\n    {"order": 1, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 2, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"},\n    {"order": 3, "area": "Swedish", "issue": "Swedish", "fix": "Swedish"}\n  ],\n  "positives": ["Swedish", "Swedish"],\n  "drill": "One specific drill with feel cue in Swedish"\n}`;
 }
 
-// ─── FEEDBACK UI ──────────────────────────────────────────────────────────────
 function showFeedbackCard() {
   const c = document.getElementById('feedbackCard');
   c.style.display = 'block';
@@ -284,7 +302,7 @@ function showFeedbackCard() {
 async function saveFeedback() {
   const t = document.getElementById('feedbackText').value.trim();
   if (!t) { alert('Skriv in din korrigering först.'); return; }
-  const btn = document.querySelector('.btn-save-feedback');
+  const btn = document.querySelector('.btn-save');
   btn.disabled = true; btn.textContent = 'Sparar...';
   await addExample(t);
   document.getElementById('feedbackSaved').style.display = 'block';
@@ -295,11 +313,9 @@ async function saveFeedback() {
 
 function skipFeedback() { document.getElementById('feedbackCard').style.display = 'none'; }
 
-// ─── VIDEO / UI ───────────────────────────────────────────────────────────────
 let videoFile = null, selectedFocus = 'full', selectedAngle = 'unknown';
 
 document.getElementById('uploadZone').onclick = () => document.getElementById('fileInput').click();
-
 document.getElementById('fileInput').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   if (f.size > 104857600) { showError('Videon är för stor. Max 100MB.'); return; }
@@ -312,19 +328,10 @@ document.getElementById('fileInput').onchange = e => {
 };
 
 document.querySelectorAll('#chips .chip').forEach(c => {
-  c.onclick = () => {
-    document.querySelectorAll('#chips .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    selectedFocus = c.dataset.val;
-  };
+  c.onclick = () => { document.querySelectorAll('#chips .chip').forEach(x => x.classList.remove('active')); c.classList.add('active'); selectedFocus = c.dataset.val; };
 });
-
 document.querySelectorAll('#angleChips .chip').forEach(c => {
-  c.onclick = () => {
-    document.querySelectorAll('#angleChips .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    selectedAngle = c.dataset.angle;
-  };
+  c.onclick = () => { document.querySelectorAll('#angleChips .chip').forEach(x => x.classList.remove('active')); c.classList.add('active'); selectedAngle = c.dataset.angle; };
 });
 
 document.getElementById('resetBtn').onclick = () => {
@@ -337,8 +344,7 @@ document.getElementById('resetBtn').onclick = () => {
   document.getElementById('result').style.display = 'none';
   document.getElementById('result').innerHTML = '';
   document.getElementById('feedbackCard').style.display = 'none';
-  selectedAngle = 'unknown';
-  selectedFocus = 'full';
+  selectedAngle = 'unknown'; selectedFocus = 'full';
   document.querySelectorAll('#chips .chip').forEach((c,i) => c.classList.toggle('active', i===0));
   document.querySelectorAll('#angleChips .chip').forEach((c,i) => c.classList.toggle('active', i===0));
   hideError();
@@ -350,7 +356,6 @@ function hideError() { document.getElementById('errorMsg').style.display = 'none
 function setLoading(t) { document.getElementById('loadingText').textContent = t; document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 
-// ─── MOTION DETECTION ────────────────────────────────────────────────────────
 async function detectSwingByMotion(file) {
   return new Promise((resolve) => {
     const video = document.createElement('video');
@@ -414,7 +419,6 @@ async function detectSwingByMotion(file) {
   });
 }
 
-// ─── FRAME EXTRACTION ────────────────────────────────────────────────────────
 function extractFramesFromRange(file, startTime, endTime, n) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -444,11 +448,10 @@ function extractFramesFromRange(file, startTime, endTime, n) {
   });
 }
 
-// ─── RENDER RESULT ────────────────────────────────────────────────────────────
 function scoreClass(s) { return s >= 8 ? 'good' : s >= 6 ? 'ok' : 'bad'; }
 
 function renderResult(data, swingInfo, angle) {
-  const labels = { setup: 'Setup', weight_shift: 'Viktsförflyttning', lower_body: 'Underkropp', upper_body: 'Överkropp', arms: 'Armar', hands: 'Händer/Klubba' };
+  const labels = { setup:'Setup', weight_shift:'Viktsförflyttning', lower_body:'Underkropp', upper_body:'Överkropp', arms:'Armar', hands:'Händer/Klubba' };
   const angleLabel = angle === 'face-on' ? ' · Face On' : angle === 'dtl' ? ' · DTL' : '';
   let html = '';
   if (swingInfo?.detected) {
@@ -456,22 +459,22 @@ function renderResult(data, swingInfo, angle) {
   } else {
     html += `<div class="swing-info">12 frames analyserade${angleLabel}</div>`;
   }
-  html += `<div class="card"><div class="summary-box">${data.summary}</div><div class="score-grid">`;
+  html += `<div class="result-card"><div class="summary-text">${data.summary}</div><div class="score-grid">`;
   for (const [k, v] of Object.entries(data.scores)) {
-    html += `<div class="score-tile"><div class="slbl">${labels[k]||k}</div><div class="sval ${scoreClass(v.score)}">${v.score}<span style="font-size:13px;font-weight:400">/10</span></div></div>`;
+    html += `<div class="score-tile"><div class="score-label">${labels[k]||k}</div><div class="score-val ${scoreClass(v.score)}">${v.score}<span style="font-size:12px;font-weight:400;color:var(--muted)">/10</span></div></div>`;
   }
-  html += `</div></div><div class="card"><div class="section-title">⚠️ Rotorsak</div><div class="root-cause">${data.root_cause}</div>`;
-  html += `<div class="section-title">Åtgärda i prioritetsordning</div><ul class="prio-list">`;
+  html += `</div><div class="result-section"><div class="result-section-title">Rotorsak</div><div class="root-cause">${data.root_cause}</div></div>`;
+  html += `<div class="result-section"><div class="result-section-title">Prioritetsordning</div><ul class="prio-list">`;
   data.priorities.forEach(p => {
     html += `<li class="prio-item"><span class="prio-num">${p.order}</span><div><div class="prio-area">${p.area}</div><div class="prio-issue">${p.issue}</div><div class="prio-fix">${p.fix}</div></div></li>`;
   });
   html += `</ul></div>`;
   if (data.positives?.length) {
-    html += `<div class="card"><div class="section-title">✅ Det som fungerar bra</div>`;
+    html += `<div class="result-section"><div class="result-section-title">Det som fungerar bra</div>`;
     data.positives.forEach(p => { html += `<div class="pos-item"><span class="check">✓</span>${p}</div>`; });
     html += `</div>`;
   }
-  html += `<div class="card"><div class="section-title">🎯 Övning att träna</div><div class="drill-box">${data.drill}</div></div>`;
+  html += `<div class="result-section"><div class="result-section-title">Övning att träna</div><div class="drill-box">${data.drill}</div></div></div>`;
   const result = document.getElementById('result');
   result.innerHTML = html;
   result.style.display = 'block';
@@ -479,7 +482,6 @@ function renderResult(data, swingInfo, angle) {
   setTimeout(showFeedbackCard, 600);
 }
 
-// ─── MAIN ANALYZE ─────────────────────────────────────────────────────────────
 async function analyzeSwing() {
   if (!videoFile) return;
   hideError();
@@ -498,11 +500,13 @@ async function analyzeSwing() {
     setLoading('Analyserar med AI-coach...');
     const angleNote = selectedAngle === 'face-on' ? ' Videon är filmad Face On (framifrån).' : selectedAngle === 'dtl' ? ' Videon är filmad DTL (från sidan).' : '';
     const focusNote = selectedFocus !== 'full' ? ` Fokusera extra på ${selectedFocus}-fasen.` : '';
-    const userPrompt = `Analysera detta golfsving.${angleNote}${focusNote} ${frames.length} frames bifogade. Returnera analys som JSON.`;
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: systemPrompt, contents: [...frames.map(f => ({ inlineData: { mimeType: 'image/jpeg', data: f } })), { text: userPrompt }] })
+      body: JSON.stringify({
+        system: systemPrompt,
+        contents: [...frames.map(f => ({ inlineData: { mimeType: 'image/jpeg', data: f } })), { text: `Analysera detta golfsving.${angleNote}${focusNote} ${frames.length} frames bifogade från address till follow-through. Returnera analys som JSON.` }]
+      })
     });
     if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'API-fel'); }
     const res = await response.json();
@@ -517,53 +521,88 @@ async function analyzeSwing() {
   }
 }
 
-// ─── COACHING DOC ─────────────────────────────────────────────────────────────
-const COACHING_DOC = `PRIORITY ORDER: setup → weight shift → lower body → upper body → arms → hands/club. Root cause is almost always earlier in the order than the visible symptom. Parts later in the order have more direct impact on ball flight.
+const COACHING_DOC = `GOLF SWING COACHING FRAMEWORK
 
-WALTZ RHYTHM: weight shift first, then lower body, then continuing through priority order. Club arrives like a whip. Arms stay in front of body, only moving vertically. Straighten left leg and left arm at impact.
+PRIORITY ORDER: setup → weight shift → lower body → upper body (excl. arms) → arms → hands/club.
+Always diagnose from the beginning of this order. Root cause is almost always earlier than the visible symptom. Parts later in the order have more direct impact on ball flight; weight shift provides lasting consistency.
 
-SWING PLANE (DTL only): Checkpoint 1 takeaway — shaft points at camera when club parallel to ground. Checkpoint 2 top — shaft points at target. Checkpoint 3 downswing — shaft matches checkpoint 1 angle.
+THE WALTZ RHYTHM: The swing flows like a waltz — weight shift first, then lower body, then upper body, arms, hands. When executed correctly the club arrives like a whip producing effortless power. To eliminate variables: keep arms in front of body throughout, only moving vertically (lifting in shoulder joint, bending right arm and both wrists). Straighten left leg AND left arm at impact — a straight leg is always the same length; same principle for the arm.
 
-BACKSWING: 50/50 at address. 60/40 right during backswing. Just before top — still moving up — shift aggressively left. At impact straighten left leg from heel aggressively. Rotate left hip 45 degrees. At top: hips 45+ degrees, shoulders 90-110 degrees, 1:2 ratio. Arms in front, right arm bent, left arm straight.
+THE SWING PLANE (assess from DTL only):
+Checkpoint 1 — Takeaway: club parallel to ground, shaft points directly at camera from DTL.
+Checkpoint 2 — Top: shaft points directly at target.
+Checkpoint 3 — Downswing: shaft matches same angle as checkpoint 1.
 
-DOWNSWING is a consequence of backswing: too much right going back → over-shift left coming down. Arms inside on takeaway → over the top on the way down.
+THE BACKSWING:
+- Start 50/50. Shift to 60/40 favoring right foot during backswing.
+- Just before the top — while still moving upward — begin shifting weight aggressively left. Major power source.
+- At impact, straighten left leg from heel as fast and aggressively as possible. Another major power source.
+- Simultaneously rotate left hip open approximately 45 degrees from setup angle.
+- Right foot rolls to inside edge, then rises onto toe after impact.
+- At top: hips minimum 45 degrees, shoulders 90-110 degrees, maintain 1:2 ratio hip to shoulder rotation.
+- Arms in front of upper body, right arm bent, left arm straight throughout entire swing.
+- From DTL: hands in front of club. From behind: clubhead hidden behind arms. From face on: weight shift barely visible (1cm) — what matters is what the player feels.
 
-SETUP DTL: slightly bent knees, weight mid-foot toward heels, hip pushed back, tilted forward from hips, lower back straight, arms hang naturally, club flat, three body lines parallel to target.
+THE DOWNSWING is a consequence of the backswing:
+Too much weight right going back → over-shift left coming down and vice versa.
+Arms too far inside on takeaway → over the top on the way down and vice versa.
 
-SETUP FACE ON: feet just outside shoulder width, left foot 15 degrees open, right foot 5-10 degrees, left arm straight, hands pressed forward forming Y with shaft lean, hip closest to target slightly higher, 50/50 weight.
+SETUP — DOWN THE LINE:
+Slightly bent knees. Weight centered mid-foot, slightly toward heels — even small weight on toes causes chain reaction problems. Hip pushed back. Upper body tilted forward from hips. Lower back straight. Upper back curves naturally toward ball through releasing tension in chest/front shoulders. Arms hang straight down from shoulders. Club at top of grip, sits flat on ground. Toes, hip joints, shoulder joints create three parallel lines pointing at target.
 
-IMPACT DTL: hips remain back, no standing up. Right foot on inside edge. Left foot weight on heel. Hips 45 degrees open.
+SETUP — FACE ON:
+Feet just outside shoulder width. Left foot ~15 degrees open, right foot ~5-10 degrees turned back. Left arm completely straight, right arm nearly straight. Arms and club form small Y shape with hands pressed forward toward target. Hip closest to target slightly higher, creating small spine tilt away from target. Hips pushed slightly toward target, 50/50 weight.
 
-IMPACT FACE ON: weight clearly left. Reverse K body shape. Hands visibly ahead of clubhead. Left arm dominant — stabilizes face, keeps hands ahead. Right arm closes face, left arm keeps it open.
+THE GRIP:
+Left hand: club between fingers and palm perpendicular to arm. Thumb on grip in line with arm. Club gripped in fingers not palm — provides control and speed through leverage. Right hand: interlock right pinky with left index, lay right hand over left. Left thumb straight on top. Right hand uses front pad of thumb and first pad of index finger, V shape centered in line with left thumb.
 
-CAMERA ANGLE RULE — CRITICAL: What is visible from Face On CANNOT be assessed from DTL, and vice versa.
-DTL reveals ONLY: knee flex, hip hinge, hands below shoulders, back curvature, swing plane, takeaway path, club position at top, arms in front of body, hip rotation at impact, early extension.
-Face On reveals ONLY: weight distribution, spine angle, hand forward press, weight shift trail side, passive takeaway, arms in front of body, shoulder rotation, weight shift lead side, lead leg extension at impact, hands ahead of clubhead at impact.
-NEVER assess weight shift from DTL. NEVER assess swing plane from Face On.
+ARMS IN FRONT OF THE BODY:
+Arms must remain in front of chest throughout entire swing — free to move vertically but never sideways relative to chest. Most common violation: right elbow falling onto side of ribcage during backswing. Creates two problems: getting stuck (club trapped behind body) or coming over the top (club thrown outward, outside-in path). Left arm remains straight from address until swing almost finished, then folds naturally. Keep left arm in front of ribcage in follow through — mirror of right arm requirement in backswing.
 
-FAULT 1 — Too upright posture: club on toe, restricted turn, over the top. Fix: hips back, tilt from hip joint, arms hang, weight toward heels. Feel: push backside toward wall behind you.
-FAULT 2 — No forward press: scooping, weak high ball. Fix: hands toward target, shaft lean. Never open the face when pressing forward.
-FAULT 3 — No weight shift trigger: passive lower body, no rhythm. Fix: isolated 60/40 right shift before backswing, not a continuous sway.
-FAULT 4 — Takeaway inside/outside: mirrors in downswing. Fix: body rotation initiates, arms completely passive.
-FAULT 5 — Right elbow to ribcage: stuck or over the top. Fix: right arm in front of chest always, space between elbow and ribcage.
-FAULT 6 — Across line or laid off: consequence of fault 4 or 5. Fix earlier fault, never manipulate top position directly.
-FAULT 7 — Insufficient weight transfer left: fat contact, scooping. Fix: shift left starts before top of backswing, not a lateral lunge.
-FAULT 8 — Coming over the top: outside-in, slice/pull. Root causes in order: 1) insufficient shoulder rotation 2) missing weight shift 3) hips firing before weight shift. Fix in that order. Cannot fix in downswing — too fast.
-FAULT 9 — Getting stuck: hook or blocked push. Same root causes as fault 8, opposite compensation. Fix same way.
-FAULT 10 — Early extension: hips thrust toward ball, standing up, heel strikes, shanks. Root: insufficient rotation or bad setup. Fix: more rotation, actively push hips BACKWARD away from ball while rotating. Feel: sitting back while swinging through.
-FAULT 11 — Left arm to ribcage in follow through: right arm dominance, hook. Fix: left arm dominance through impact, elbows close together through impact and follow through.`;
+IMPACT — DOWN THE LINE:
+Most important: hips remain back, player does NOT stand up through ball. Right foot: weight on inside edge only, outer edge rolled up. Left foot: majority of weight on heel. Hips: approximately 45 degrees open relative to setup.
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
+IMPACT — FACE ON:
+Weight clearly on left foot. Body forms reverse K shape — left side straight vertical, right leg-hip and hip-right shoulder form two diagonals. Hands VISIBLY ahead of clubhead — applies to all irons, more pronounced with shorter clubs. LEFT ARM DOMINANCE: left arm is dominant through impact — stabilizes clubhead, reduces face rotation, encourages hands ahead of club. Right arm closes face during downswing, left arm keeps it open — balance determines face angle and shot shape. Left arm dominance ensures stability and control.
+
+CAMERA ANGLE RULES — CRITICAL:
+What is visible from Face On CANNOT be reliably assessed from DTL, and vice versa.
+
+FROM DTL YOU CAN OBSERVE: knee flex and hip hinge at address, whether hands hang directly below shoulders, back curvature, whether club is on plane, takeaway position, club inside/outside at top, whether arms remain in front of body, lead hip rotation through impact, early extension.
+FROM DTL YOU CANNOT OBSERVE: weight shift between feet — EVER.
+
+FROM FACE ON YOU CAN OBSERVE: weight distribution at address, spine angle at address, whether hands are sufficiently forward, weight shift to trail side during backswing, passive takeaway, arms in front of body, shoulder rotation, weight shift to lead side during downswing, lead leg extension at impact, hands ahead of clubhead at impact.
+FROM FACE ON YOU CANNOT OBSERVE: knee flex, whether club is on or off the plane.
+
+FAULT 1 — Too upright posture: club on toe, restricted hip turn, over the top tendency. Fix: push hips back, tilt from hip joint, let arms hang naturally, weight toward heels. Feel: "Push backside toward wall behind you while letting upper body fall toward ball."
+
+FAULT 2 — No forward press: hands level with or behind clubhead, scooping, weak high ball flight. The entire chain originates from hand position at address. Fix: hands pressed toward target, shaft lean, left arm and shaft form straight line. CRITICAL: do not open the clubface when pressing forward — the lowest groove must stay on same angle. Feel: "Point grip butt toward left hip — then check lowest groove still points where you aimed."
+
+FAULT 3 — No weight shift trigger: swing starts with arms/shoulders, no waltz rhythm, passive lower body. Fix: small isolated shift to 60/40 right BEFORE backswing starts — completely separate move, not a continuous sway. Feel: "Rock onto right foot, pause for a heartbeat, then let the club follow."
+
+FAULT 4 — Takeaway inside/outside: mirrors in downswing. Takeaway is defined as the moment club first becomes parallel to ground. Fix: body rotation initiates takeaway, arms and wrists completely passive. Do NOT push club deliberately to opposite side. Feel: "Turn your chest away from the ball and let the club come with it."
+
+FAULT 5 — Right elbow to ribcage: club trapped, getting stuck or coming over the top. Fix: right arm stays in front of chest throughout backswing — space between elbow and ribcage always. Only movements: lifting in shoulder joint, bending at right elbow — both happen in FRONT of chest. Keep elbows close together. More body rotation often self-corrects.
+
+FAULT 6 — Across line or laid off at top: consequence of fault 4 or 5. Across line: fix right elbow. Laid off: fix takeaway and ensure sufficient shoulder rotation. NEVER manipulate top position directly. Feel: "Don't fix the top — fix what happened before it."
+
+FAULT 7 — Insufficient weight transfer left: fat contact, scooping, weak ball flight. Weight shift to left must begin BEFORE top of backswing while club still going up. Majority of weight on left heel by impact. Not a lateral lunge — rotation onto left side. Feel: "Start moving left before you reach the top — don't wait."
+
+FAULT 8 — Coming over the top: outside-in path, slice/pull. Root causes in order: 1) insufficient shoulder rotation (most common — check first), 2) missing weight shift to left before downswing, 3) hips firing before weight shift. Fix in that exact order. Cannot fix in downswing — happens too fast. Feel: "Shift left first — let the hips follow the weight, don't spin them."
+
+FAULT 9 — Getting stuck: hook or blocked push. Same root causes as fault 8, opposite compensation. Apply same diagnostic order. Aggressively rotating hips faster makes it worse. Feel: "Keep the right elbow in front of you going back and there will be room coming down."
+
+FAULT 10 — Early extension: hips thrust toward ball during downswing, standing up through impact, heel strikes, shanks. Root causes: insufficient shoulder rotation or incorrect setup. Power compensation — body instinctively thrusts because it couldn't generate rotational power. Fix: more shoulder rotation in backswing, check setup, actively push BOTH hips backward away from ball in downswing while still rotating. Feel: "Rotate left hip behind you — not toward ball" / "Sitting back slightly while rotating through."
+
+FAULT 11 — Left arm to ribcage in follow through: right arm dominance, hook, pull hook. Mirror image of fault 5. Fix: left arm dominance through impact, left arm pulls club through, keep elbows close together through impact and entire follow through, left arm stays straight until swing almost finished. Feel: "Pull the club through with your left arm and keep both elbows close together all the way to the finish."`;
+
 async function logout() {
   await _sb.auth.signOut();
   window.location.href = '/login.html';
 }
 
 _sb.auth.getSession().then(({ data }) => {
-  if (!data.session) {
-    window.location.href = '/login.html';
-    return;
-  }
+  if (!data.session) { window.location.href = '/login.html'; return; }
   document.getElementById('headerUser').textContent = data.session.user.email;
   loadExamplesUI();
 });
