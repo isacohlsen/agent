@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontakt — PureAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--green-dark:#1e4d2b;--green:#2a6636;--green-light:#e8f5ec;--green-pale:#f2faf4;--white:#ffffff;--dark:#111c14;--text:#2c3e30;--muted:#6b7e6e;--border:#dde8df;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--green-pale);color:var(--text);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:0 4rem;height:68px;background:var(--white);border-bottom:1px solid var(--border);}
+  .nav-cta{background:var(--green-dark);color:white;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;}
+  .page{flex:1;display:flex;align-items:center;justify-content:center;padding:4rem 2rem;}
+  .container{max-width:480px;width:100%;text-align:center;}
+  .icon{font-size:2.5rem;margin-bottom:1.5rem;}
+  h1{font-size:2rem;font-weight:600;color:var(--dark);letter-spacing:-0.5px;margin-bottom:0.75rem;}
+  .intro{font-size:15px;color:var(--muted);line-height:1.8;font-weight:300;margin-bottom:2rem;}
+  .email-link{display:inline-block;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:1.2rem 2rem;font-size:17px;font-weight:500;color:var(--green-dark);text-decoration:none;box-shadow:0 2px 12px rgba(30,77,43,0.07);transition:all 0.2s;}
+  .email-link:hover{border-color:var(--green);box-shadow:0 4px 20px rgba(30,77,43,0.12);}
+  .note{font-size:13px;color:var(--muted);margin-top:1.5rem;font-weight:300;}
+  footer{background:var(--dark);color:rgba(255,255,255,0.4);padding:2rem 4rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;font-size:13px;}
+  footer a{color:rgba(255,255,255,0.4);text-decoration:none;margin-left:1.5rem;}
+  @media(max-width:600px){nav{padding:0 1.5rem;}footer{padding:1.5rem;flex-direction:column;text-align:center;}footer a{margin:0 0.75rem;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/landing.html" style="text-decoration:none;display:flex;align-items:center;">
+    <svg height="26" viewBox="0 0 195 52" xmlns="http://www.w3.org/2000/svg">
+      <text y="42" style="font-family:'Inter',sans-serif;font-size:42px;letter-spacing:-2px;"><tspan style="font-weight:600;fill:#1e4d2b;">Pure</tspan><tspan style="font-weight:300;fill:#3a8a4a;">AI</tspan></text>
+    </svg>
+  </a>
+  <a class="nav-cta" href="/landing.html#pricing">Kom igång</a>
+</nav>
+
+<div class="page">
+  <div class="container">
+    <div class="icon">✉️</div>
+    <h1>Kontakta oss</h1>
+    <p class="intro">Har du frågor om tjänsten eller ditt abonnemang? Skicka ett mail så hör vi av oss inom 1–2 arbetsdagar.</p>
+    <a class="email-link" href="mailto:info@getpureai.se">info@getpureai.se</a>
+    <p class="note">Abonnemang och betalning hanteras direkt via Stripe — du hittar din kundportal i bekräftelsemailet från Stripe.</p>
+  </div>
+</div>
+
+<footer>
+  <svg height="22" viewBox="0 0 195 52" xmlns="http://www.w3.org/2000/svg">
+    <text y="42" style="font-family:'Inter',sans-serif;font-size:42px;letter-spacing:-2px;"><tspan style="font-weight:600;fill:white;opacity:0.9;">Pure</tspan><tspan style="font-weight:300;fill:rgba(255,255,255,0.5);">AI</tspan></text>
+  </svg>
+  <span>© 2026 Valter & Isac AB</span>
+  <div>
+    <a href="/privacy.html">Integritetspolicy</a>
+    <a href="/terms.html">Användarvillkor</a>
+    <a href="/contact.html">Kontakt</a>
+  </div>
+</footer>
+
+</body>
+</html>
